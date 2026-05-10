@@ -1,0 +1,694 @@
+{
+  "alice": [
+    {
+      "user_id": "alice",
+      "parcel_id": "P-01",
+      "analysis_id": "25af3033-5486-4711-9ea9-125f35f7d189",
+      "created_at": "2026-05-08T19:09:13.766567Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K1",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.5976,
+        "interpretation": "Indicative NPK estimate: K1 / N2 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Laboratory confirmation is strongly recommended before any fertilization decision.",
+        "is_mock": true,
+        "timestamp": "2026-05-08T19:09:13.766567Z",
+        "source": "mock:alice",
+        "model_status": "mock",
+        "probabilities": {
+          "K0": 0.3453068137168884,
+          "K1": 0.726166307926178,
+          "K2": 0.5599992275238037,
+          "N0": 0.4894216954708099,
+          "N1": 0.1028231978416442,
+          "N2": 0.6219338178634644,
+          "P0": 0.2690054476261139,
+          "P1": 0.4445917904376983
+        }
+      }
+    }
+  ],
+  "jury": [
+    {
+      "user_id": "jury",
+      "parcel_id": "P-01",
+      "analysis_id": "f00cdd65-5005-4c04-8e55-65ade837fa4b",
+      "created_at": "2026-05-08T19:13:39.165527Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K1",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.5976,
+        "interpretation": "Indicative NPK estimate: K1 / N2 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Laboratory confirmation is strongly recommended before any fertilization decision.",
+        "is_mock": true,
+        "timestamp": "2026-05-08T19:13:39.165527Z",
+        "source": "mock:jury",
+        "model_status": "mock",
+        "probabilities": {
+          "K0": 0.3453068137168884,
+          "K1": 0.726166307926178,
+          "K2": 0.5599992275238037,
+          "N0": 0.4894216954708099,
+          "N1": 0.1028231978416442,
+          "N2": 0.6219338178634644,
+          "P0": 0.2690054476261139,
+          "P1": 0.4445917904376983
+        }
+      }
+    },
+    {
+      "user_id": "jury",
+      "parcel_id": "P-01",
+      "analysis_id": "1066170b-b090-4b2c-8a67-0cf1af1bccd4",
+      "created_at": "2026-05-08T19:13:28.626729Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K1",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.5976,
+        "interpretation": "Indicative NPK estimate: K1 / N2 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Laboratory confirmation is strongly recommended before any fertilization decision.",
+        "is_mock": true,
+        "timestamp": "2026-05-08T19:13:28.626729Z",
+        "source": "mock:jury",
+        "model_status": "mock",
+        "probabilities": {
+          "K0": 0.3453068137168884,
+          "K1": 0.726166307926178,
+          "K2": 0.5599992275238037,
+          "N0": 0.4894216954708099,
+          "N1": 0.1028231978416442,
+          "N2": 0.6219338178634644,
+          "P0": 0.2690054476261139,
+          "P1": 0.4445917904376983
+        }
+      }
+    }
+  ],
+  "708fd4a3-bcdb-4308-a74a-ca99be4c5b12": [
+    {
+      "user_id": "708fd4a3-bcdb-4308-a74a-ca99be4c5b12",
+      "parcel_id": "P-77",
+      "analysis_id": "26abdde1-aa9a-4ac5-8899-516ec36c699e",
+      "created_at": "2026-05-08T19:25:59.889424Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P0"
+        },
+        "confidence": 0.9811,
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P0. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-08T19:25:59.889424Z",
+        "source": "mock:708fd4a3-bcdb-4308-a74a-ca99be4c5b12",
+        "model_status": "mock",
+        "probabilities": {
+          "K0": 0.9505046010017396,
+          "K1": 0.0425361953675746,
+          "K2": 0.084341675043106,
+          "N0": 0.9991175532341005,
+          "N1": 0.0098497867584228,
+          "N2": 0.0185435600578784,
+          "P0": 0.9937365055084229,
+          "P1": 0.0043325321748852
+        }
+      }
+    }
+  ],
+  "aa21a2c3-eb6b-496e-bb62-35339aee3ae7": [
+    {
+      "user_id": "aa21a2c3-eb6b-496e-bb62-35339aee3ae7",
+      "parcel_id": "37a560af-1797-4fd5-a002-ccc1e697a13d",
+      "parcel": null,
+      "analysis_id": "4cdb168c-1f1e-4f49-a08c-3f37d44538ba",
+      "created_at": "2026-05-08T19:41:00.806571Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K2",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.9755,
+        "interpretation": "Indicative NPK estimate: K2 / N2 / P1. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-08T19:41:00.806571Z",
+        "source": "mock:aa21a2c3-eb6b-496e-bb62-35339aee3ae7",
+        "model_status": "mock",
+        "probabilities": {
+          "K0": 0.0642609894275665,
+          "K1": 0.2878666818141937,
+          "K2": 0.998243808746338,
+          "N0": 0.0049919877201318,
+          "N1": 0.3081628680229187,
+          "N2": 0.9643861651420592,
+          "P0": 0.034585915505886,
+          "P1": 0.9638302326202391
+        }
+      }
+    }
+  ],
+  "7ca49cca-f847-41ef-b79e-938dec3a9ff4": [
+    {
+      "user_id": "7ca49cca-f847-41ef-b79e-938dec3a9ff4",
+      "parcel_id": "08010359-59f9-487f-a452-8362713183f8",
+      "parcel": null,
+      "image_name": "soil-demo.jpg",
+      "analysis_id": "dbf9c502-412d-482b-8bc7-3d5c331186a0",
+      "created_at": "2026-05-08T19:48:27.312561Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K2",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.9506,
+        "interpretation": "Indicative NPK estimate: K2 / N2 / P1. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-08T19:48:27.312561Z",
+        "source": "mock:7ca49cca-f847-41ef-b79e-938dec3a9ff4",
+        "model_status": "mock",
+        "probabilities": {
+          "K0": 0.0811167284846305,
+          "K1": 0.091791346669197,
+          "K2": 0.96573805809021,
+          "N0": 0.1596336513757705,
+          "N1": 0.0591081418097019,
+          "N2": 0.9474887847900392,
+          "P0": 0.0892783105373382,
+          "P1": 0.938614010810852
+        }
+      }
+    }
+  ],
+  "8547c075-c3d0-4ba7-867e-4f2c9717c2f5": [
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "istockphoto-155282442-612x612.jpg",
+      "analysis_id": "52011f4e-ae2b-4b63-b712-21b639f79e9f",
+      "created_at": "2026-05-10T10:02:38.811657Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K1",
+          "N_level": "N1",
+          "P_level": "P0"
+        },
+        "confidence": 0.8854,
+        "status": "confirmation_recommandee",
+        "can_trust_result": true,
+        "quality_check": {
+          "valid": true,
+          "status": "ok",
+          "width": 612,
+          "height": 379,
+          "brightness": 181.13,
+          "contrast": 57.41,
+          "sharpness": 106.67,
+          "issues": []
+        },
+        "confidence_details": {
+          "max_prob": 0.9602,
+          "second_prob": 0.8738,
+          "margin": 0.0863,
+          "top_label": "P0",
+          "top_group": "P"
+        },
+        "interpretation": "Indicative NPK estimate: K1 / N1 / P0. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Résultat utilisable avec prudence: confirmer avant toute décision agronomique définitive.",
+        "agronomic_advice": {
+          "potassium": {
+            "nutrient": "K",
+            "level": "K1",
+            "priority": "moderate",
+            "advice": "La classe K1 indique un niveau intermédiaire en potassium. Priorité modérée: suivi recommandé et confirmation analytique si la décision est sensible.",
+            "soil_status": "niveau intermédiaire",
+            "summary": "Potassium à suivre avec prudence.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "nitrogen": {
+            "nutrient": "N",
+            "level": "N1",
+            "priority": "moderate",
+            "advice": "La classe N1 indique un niveau intermédiaire en azote. Priorité modérée: suivi recommandé et confirmation analytique si la décision est sensible.",
+            "soil_status": "niveau intermédiaire",
+            "summary": "Azote à suivre avec prudence.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "phosphorus": {
+            "nutrient": "P",
+            "level": "P0",
+            "priority": "high",
+            "advice": "La classe P0 suggère un niveau faible en phosphore. Priorité élevée: contrôler le contexte de la parcelle et confirmer par une analyse laboratoire avant correction.",
+            "soil_status": "niveau faible",
+            "summary": "Phosphore à surveiller en priorité.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "global_advice": {
+            "soil_score": 51,
+            "soil_level": "à surveiller",
+            "soil_status": "surveillance prioritaire",
+            "priority_focus": "P",
+            "priority_summary": "Priorité principale sur P (P0).",
+            "summary": "Score global 51/100 (à surveiller). Priorité principale sur P (P0). Les autres nutriments suivent une logique de priorité moderate et moderate.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          }
+        },
+        "warning_message": "Confirmation recommandée: le résultat est exploitable mais mérite une validation terrain ou laboratoire.",
+        "recommendation_message": "Résultat utilisable avec prudence: confirmer avant toute décision agronomique définitive.",
+        "is_mock": true,
+        "timestamp": "2026-05-10T10:02:38.811167Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.3643892705440521,
+          "K1": 0.8738104104995728,
+          "K2": 0.2024080157279968,
+          "N0": 0.4966798424720764,
+          "N1": 0.822371780872345,
+          "N2": 0.1200591102242469,
+          "P0": 0.9601579904556274,
+          "P1": 0.0914869606494903
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "istockphoto-1674128921-612x612.jpg",
+      "analysis_id": "562daf20-ce47-449b-a29b-75d8b203588d",
+      "created_at": "2026-05-10T10:02:26.958475Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": null,
+        "confidence": 0.0,
+        "status": "image_non_exploitable",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": false,
+          "status": "image_non_exploitable",
+          "width": 612,
+          "height": 408,
+          "brightness": 37.32,
+          "contrast": 15.75,
+          "sharpness": 35.26,
+          "issues": [
+            "low_contrast"
+          ]
+        },
+        "confidence_details": {
+          "max_prob": 0.0,
+          "second_prob": 0.0,
+          "margin": 0.0,
+          "top_label": null,
+          "top_group": null
+        },
+        "interpretation": "L’image ne permet pas une lecture NPK fiable.",
+        "recommendation": "Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.",
+        "agronomic_advice": null,
+        "warning_message": "Image non exploitable: low_contrast. Reprendre une image plus nette, plus lisible et mieux exposée.",
+        "recommendation_message": "Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.",
+        "is_mock": true,
+        "timestamp": "2026-05-10T10:02:26.958475Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "rejected",
+        "probabilities": {}
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "f66d9040-2aef-4ba9-b3a1-fd030fca76d5.png",
+      "analysis_id": "79ca3456-4777-440f-a9f6-bf6f7ef7e4aa",
+      "created_at": "2026-05-09T22:20:06.633498Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": null,
+        "confidence": 0.0,
+        "status": "image_non_exploitable",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": false,
+          "status": "image_non_exploitable",
+          "width": 1448,
+          "height": 1086,
+          "brightness": 110.15,
+          "contrast": 10.07,
+          "sharpness": 1.88,
+          "issues": [
+            "low_contrast",
+            "blurry"
+          ]
+        },
+        "confidence_details": {
+          "max_prob": 0.0,
+          "second_prob": 0.0,
+          "margin": 0.0,
+          "top_label": null,
+          "top_group": null
+        },
+        "interpretation": "L’image ne permet pas une lecture NPK fiable.",
+        "recommendation": "Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.",
+        "agronomic_advice": null,
+        "warning_message": "Image non exploitable: low_contrast, blurry. Reprendre une image plus nette, plus lisible et mieux exposée.",
+        "recommendation_message": "Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T22:20:06.633498Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "rejected",
+        "probabilities": {}
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "f66d9040-2aef-4ba9-b3a1-fd030fca76d5.png",
+      "analysis_id": "d185a976-ab04-4b50-ba44-83b042358a45",
+      "created_at": "2026-05-09T22:05:44.357855Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": null,
+        "confidence": 0.0,
+        "status": "image_non_exploitable",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": false,
+          "status": "image_non_exploitable",
+          "width": 1448,
+          "height": 1086,
+          "brightness": 110.15,
+          "contrast": 10.07,
+          "sharpness": 1.88,
+          "issues": [
+            "low_contrast",
+            "blurry"
+          ]
+        },
+        "confidence_details": {
+          "max_prob": 0.0,
+          "second_prob": 0.0,
+          "margin": 0.0,
+          "top_label": null,
+          "top_group": null
+        },
+        "interpretation": "L’image ne permet pas une lecture NPK fiable.",
+        "recommendation": "Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.",
+        "agronomic_advice": null,
+        "warning_message": "Image non exploitable: low_contrast, blurry. Reprendre une image plus nette, plus lisible et mieux exposée.",
+        "recommendation_message": "Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T22:05:44.357855Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "rejected",
+        "probabilities": {}
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "istockphoto-1674128921-612x612.jpg",
+      "analysis_id": "aac372c5-14d2-4a1e-8950-1f0f5dc34296",
+      "created_at": "2026-05-09T21:41:54.442847Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P1"
+        },
+        "confidence": 0.6669,
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Laboratory confirmation is strongly recommended before any fertilization decision.",
+        "agronomic_advice": {
+          "potassium": {
+            "nutrient": "K",
+            "level": "K0",
+            "priority": "high",
+            "advice": "La classe K0 suggère un niveau faible en potassium. Priorité élevée: contrôler le contexte de la parcelle et confirmer par une analyse laboratoire avant correction.",
+            "soil_status": "niveau faible",
+            "summary": "Potassium à surveiller en priorité.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "nitrogen": {
+            "nutrient": "N",
+            "level": "N0",
+            "priority": "high",
+            "advice": "La classe N0 suggère un niveau faible en azote. Priorité élevée: contrôler le contexte de la parcelle et confirmer par une analyse laboratoire avant correction.",
+            "soil_status": "niveau faible",
+            "summary": "Azote à surveiller en priorité.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "phosphorus": {
+            "nutrient": "P",
+            "level": "P1",
+            "priority": "low",
+            "advice": "La classe P1 est compatible avec un niveau acceptable en phosphore. Priorité faible: maintenir la surveillance sans conclusion de dose à partir de cette seule image.",
+            "soil_status": "niveau acceptable",
+            "summary": "Phosphore plutôt rassurant à ce stade.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "global_advice": {
+            "soil_status": "surveillance prioritaire",
+            "summary": "Priorité principale sur K (K0). Les autres nutriments suivent une logique de priorité high et low.",
+            "warning": "Conseil indicatif fondé sur une classe prédite à partir d’une image. Il ne fournit ni dose exacte ni recommandation de fertilisation: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          }
+        },
+        "is_mock": true,
+        "timestamp": "2026-05-09T21:41:54.442847Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.8940023183822632,
+          "K1": 0.1050096526741981,
+          "K2": 0.8552514910697937,
+          "N0": 0.6425018310546875,
+          "N1": 0.1170638352632522,
+          "N2": 0.4010717272758484,
+          "P0": 0.4249879121780395,
+          "P1": 0.4642910659313202
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "istockphoto-1674128921-612x612.jpg",
+      "analysis_id": "acdec835-cfa9-472c-b7bd-89edcd604f8a",
+      "created_at": "2026-05-09T21:29:58.703290Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P1"
+        },
+        "confidence": 0.6669,
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Laboratory confirmation is strongly recommended before any fertilization decision.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T21:29:58.703290Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.8940023183822632,
+          "K1": 0.1050096526741981,
+          "K2": 0.8552514910697937,
+          "N0": 0.6425018310546875,
+          "N1": 0.1170638352632522,
+          "N2": 0.4010717272758484,
+          "P0": 0.4249879121780395,
+          "P1": 0.4642910659313202
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "14747040-efaf-4533-99e1-0c30288b0486",
+      "parcel": null,
+      "image_name": "istockphoto-1674128921-612x612.jpg",
+      "analysis_id": "8a9cfc9d-f61a-46f7-8525-5e6d3228bce5",
+      "created_at": "2026-05-09T11:16:22.483431Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K2",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.99,
+        "interpretation": "Indicative NPK estimate: K2 / N2 / P1. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T11:16:22.483431Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.0028454009443521,
+          "K1": 0.0125487763434648,
+          "K2": 0.9997557401657104,
+          "N0": 0.0024195646401494,
+          "N1": 0.1389410942792892,
+          "N2": 0.9995588064193726,
+          "P0": 0.0015320947859436,
+          "P1": 0.996158003807068
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "14747040-efaf-4533-99e1-0c30288b0486",
+      "parcel": null,
+      "image_name": "istockphoto-155282442-612x612.jpg",
+      "analysis_id": "3064e9ab-9970-456a-b764-07830d944a2d",
+      "created_at": "2026-05-09T10:52:47.656139Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P0"
+        },
+        "confidence": 0.8905,
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P0. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T10:52:47.648467Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.9101132750511168,
+          "K1": 0.1648884266614914,
+          "K2": 0.1771303862333297,
+          "N0": 0.8863532543182373,
+          "N1": 0.1815856695175171,
+          "N2": 0.1639910489320755,
+          "P0": 0.8749688863754272,
+          "P1": 0.0402032285928726
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "14747040-efaf-4533-99e1-0c30288b0486",
+      "parcel": null,
+      "image_name": "istockphoto-155282442-612x612.jpg",
+      "analysis_id": "d00828dc-4cf6-4e43-881b-4a0a8ce482ea",
+      "created_at": "2026-05-09T10:40:23.023081Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P0"
+        },
+        "confidence": 0.8905,
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P0. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T10:40:23.023081Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.9101132750511168,
+          "K1": 0.1648884266614914,
+          "K2": 0.1771303862333297,
+          "N0": 0.8863532543182373,
+          "N1": 0.1815856695175171,
+          "N2": 0.1639910489320755,
+          "P0": 0.8749688863754272,
+          "P1": 0.0402032285928726
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "14747040-efaf-4533-99e1-0c30288b0486",
+      "parcel": null,
+      "image_name": "istockphoto-1674128921-612x612.jpg",
+      "analysis_id": "eaabc90a-4977-40d0-a350-f4594ee781f0",
+      "created_at": "2026-05-09T09:28:32.794223Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K2",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.99,
+        "interpretation": "Indicative NPK estimate: K2 / N2 / P1. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T09:28:32.794223Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.0028454009443521,
+          "K1": 0.0125487763434648,
+          "K2": 0.9997557401657104,
+          "N0": 0.0024195646401494,
+          "N1": 0.1389410942792892,
+          "N2": 0.9995588064193726,
+          "P0": 0.0015320947859436,
+          "P1": 0.996158003807068
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "14747040-efaf-4533-99e1-0c30288b0486",
+      "parcel": null,
+      "image_name": "istockphoto-1674128921-612x612.jpg",
+      "analysis_id": "7155362d-c88b-403f-b7a6-85cb301e5464",
+      "created_at": "2026-05-09T09:28:07.738291Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K2",
+          "N_level": "N2",
+          "P_level": "P1"
+        },
+        "confidence": 0.99,
+        "interpretation": "Indicative NPK estimate: K2 / N2 / P1. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Indicative result is robust; follow-up monitoring is still recommended before final action.",
+        "is_mock": true,
+        "timestamp": "2026-05-09T09:28:07.738291Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.0028454009443521,
+          "K1": 0.0125487763434648,
+          "K2": 0.9997557401657104,
+          "N0": 0.0024195646401494,
+          "N1": 0.1389410942792892,
+          "N2": 0.9995588064193726,
+          "P0": 0.0015320947859436,
+          "P1": 0.996158003807068
+        }
+      }
+    }
+  ]
+}
