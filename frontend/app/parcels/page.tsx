@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { ProtectedRoute } from '@/components/auth/protected-route';
@@ -261,7 +261,9 @@ export default function ParcelsPage() {
 
   return (
     <ProtectedRoute>
-      <ParcelsContent focusParcelId={focus} />
+      <Suspense fallback={<div className="mt-6 text-sm text-soil-500">Chargement...</div>}>
+        <ParcelsContent focusParcelId={focus} />
+      </Suspense>
     </ProtectedRoute>
   );
 }
