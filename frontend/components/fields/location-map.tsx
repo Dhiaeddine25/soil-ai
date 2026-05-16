@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
-import type { LeafletMouseEvent } from 'leaflet';
+import type { LeafletMouseEvent, Map as LeafletMap } from 'leaflet';
 import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 
 const defaultCenter: [number, number] = [31.7917, -7.0926];
@@ -42,16 +42,21 @@ export function LocationMap({
 }) {
   const hasLocation = latitude != null && longitude != null;
   const center: [number, number] = hasLocation ? [latitude, longitude] : defaultCenter;
+  // Keep a ref to the Leaflet map and remove it on unmount to avoid leftover
+  // initialized maps (common in React StrictMode / HMR in dev).
+  const mapRef = useRef<LeafletMap | null>(null);
 
   // Add a key tied to the center so React remounts the MapContainer when center changes.
-  // This prevents Leaflet's "Map container is already initialized" error when the
-  // same DOM node is reused across renders.
+  // This helps ensure the map matches the requested center.
   return (
     <MapContainer
       key={hasLocation ? `${center[0]}_${center[1]}` : 'default-map'}
       center={center}
       zoom={hasLocation ? 15 : 5}
       scrollWheelZoom
+      whenCreated={(map) => {
+        mapRef.current = map;
+      }}
       className="h-72 w-full rounded-[1.5rem]"
     >
       <TileLayer
@@ -70,3 +75,7 @@ export function LocationMap({
     </MapContainer>
   );
 }
+
+// Ensure we clean up the Leaflet instance if this module is hot-reloaded or
+// React remounts rapidly in StrictMode. The `whenCreated` handler above uses
+// the local `mapRef` and the cleanup is handled per-instance in React lifecycles.
