@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { GoogleLocationPicker } from '@/components/fields/google-location-picker';
@@ -256,14 +255,20 @@ function ParcelsContent({ focusParcelId }: { focusParcelId?: string }) {
 }
 
 export default function ParcelsPage() {
-  const searchParams = useSearchParams();
-  const focus = searchParams?.get('focus') ?? undefined;
+  const [focus, setFocus] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setFocus(params.get('focus') ?? undefined);
+    } catch {
+      setFocus(undefined);
+    }
+  }, []);
 
   return (
     <ProtectedRoute>
-      <Suspense fallback={<div className="mt-6 text-sm text-soil-500">Chargement...</div>}>
-        <ParcelsContent focusParcelId={focus} />
-      </Suspense>
+      <ParcelsContent focusParcelId={focus} />
     </ProtectedRoute>
   );
 }
