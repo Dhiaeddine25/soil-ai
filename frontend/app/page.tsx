@@ -6,14 +6,3 @@ export default function HomePage() {
     </main>
   );
 }
-          {messages.landing.steps.map((step, index) => (
-            <div key={step} className="rounded-3xl border border-soil-200 bg-white p-5 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-soil-400">0{index + 1}</div>
-              <div className="mt-3 text-lg font-semibold text-soil-900">{step}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </main>
-  );
-}
