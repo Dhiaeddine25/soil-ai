@@ -1,0 +1,18 @@
+# Large local artifacts that should never be uploaded to Vercel
+.venv/
+venv/
+npk_env/
+
+# Model weights and generated datasets
+npk_models_*/
+backend/data/analysis_images/
+data/analysis_images/
+
+# Runtime logs and debug outputs
+*.log
+*.err
+
+# Caches
+frontend/.next/
+**/__pycache__/
+**/*.pyc
