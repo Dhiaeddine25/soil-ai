@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -41,6 +42,12 @@ export function LoginForm() {
       <Button type="submit" disabled={isPending} className="w-full">
         Se connecter
       </Button>
+      <p className="text-center text-sm text-soil-600">
+        Pas encore de compte ?{' '}
+        <Link href="/register" className="font-semibold text-leaf-700 hover:underline">
+          Créer un compte
+        </Link>
+      </p>
     </form>
   );
 }
@@ -85,6 +92,12 @@ export function RegisterForm() {
       <Button type="submit" disabled={isPending} className="w-full">
         Créer le compte
       </Button>
+      <p className="text-center text-sm text-soil-600">
+        Déjà inscrit ?{' '}
+        <Link href="/login" className="font-semibold text-leaf-700 hover:underline">
+          Se connecter
+        </Link>
+      </p>
     </form>
   );
 }

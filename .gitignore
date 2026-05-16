@@ -9,6 +9,10 @@ npk_env/
 frontend/.next/
 frontend/node_modules/
 
+# Next.js env files (never commit secrets)
+frontend/.env*
+!frontend/.env.example
+
 __pycache__/
 *.pyc
 .pytest_cache/

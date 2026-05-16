@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Sora } from 'next/font/google';
 
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { SiteShell } from '@/components/layout/site-shell';
@@ -11,10 +12,12 @@ export const metadata: Metadata = {
   description: 'Private agritech workspace for parcel analysis, history, and reports.',
 };
 
+const sora = Sora({ subsets: ['latin'], display: 'swap', variable: '--font-sora' });
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" dir="ltr" suppressHydrationWarning>
-      <body>
+      <body className={`${sora.variable} min-h-screen bg-background text-foreground antialiased`}>
         <I18nProvider>
           <AuthProvider>
             <SiteShell>{children}</SiteShell>

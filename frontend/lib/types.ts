@@ -17,6 +17,7 @@ export interface ResultsSummaryResponse {
 }
 
 export interface PredictionResponse {
+  analysis_id?: string | null;
   model_name: string;
   prediction?: {
     K_level: 'K0' | 'K1' | 'K2';
@@ -31,6 +32,13 @@ export interface PredictionResponse {
   interpretation: string;
   recommendation: string;
   agronomic_advice: AgronomicAdvice;
+  field_advice?: string | null;
+  field_disclaimer?: string | null;
+  score?: number | null;
+  refused?: boolean;
+  refusal_reason?: string | null;
+  image_name?: string | null;
+  image_url?: string | null;
   warning_message: string;
   recommendation_message: string;
   is_mock: boolean;
@@ -71,7 +79,7 @@ export interface NutrientAdvice {
 
 export interface GlobalAgronomicAdvice {
   soil_score: number;
-  soil_level: 'satisfaisant' | 'moyen' | 'à surveiller' | 'critique';
+  soil_level: 'bon' | 'acceptable' | 'à surveiller' | 'critique';
   soil_status: string;
   priority_focus: 'K' | 'N' | 'P';
   priority_summary: string;
@@ -87,12 +95,26 @@ export interface AgronomicAdvice {
 }
 
 export interface HistoryEntry {
+  id?: string | null;
   user_id: string;
   parcel_id?: string | null;
   parcel?: ParcelPublic | null;
   image_name?: string | null;
+  image_path?: string | null;
+  image_url?: string | null;
   analysis_id: string;
   created_at: string;
+  predictions?: {
+    K_level: 'K0' | 'K1' | 'K2';
+    N_level: 'N0' | 'N1' | 'N2';
+    P_level: 'P0' | 'P1';
+  } | null;
+  probabilities?: Record<string, number>;
+  confidence?: number;
+  score?: number;
+  advice?: string | null;
+  refused?: boolean;
+  refusal_reason?: string | null;
   prediction: PredictionResponse | null;
 }
 
@@ -114,6 +136,10 @@ export interface ParcelPublic {
   user_id: string;
   name: string;
   location?: string | null;
+  region?: string | null;
+  area_ha?: number | null;
+  crop?: string | null;
+  notes?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   created_at: string;
@@ -129,6 +155,8 @@ export interface AuthState {
   user: UserPublic | null;
   loading: boolean;
   isAuthenticated: boolean;
+  status: 'loading' | 'authenticated' | 'unauthenticated' | 'error';
+  error?: string | null;
 }
 
 export interface ModelInfo {
@@ -167,6 +195,10 @@ export interface RegisterPayload {
 export interface ParcelCreatePayload {
   name: string;
   location?: string | null;
+  region?: string | null;
+  area_ha?: number | null;
+  crop?: string | null;
+  notes?: string | null;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -174,6 +206,10 @@ export interface ParcelCreatePayload {
 export interface ParcelUpdatePayload {
   name?: string | null;
   location?: string | null;
+  region?: string | null;
+  area_ha?: number | null;
+  crop?: string | null;
+  notes?: string | null;
   latitude?: number | null;
   longitude?: number | null;
 }

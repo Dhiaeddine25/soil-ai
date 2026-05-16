@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 PriorityLevel = Literal['high', 'moderate', 'low']
-SoilLevel = Literal['satisfaisant', 'moyen', 'à surveiller', 'critique']
+SoilLevel = Literal['bon', 'acceptable', 'à surveiller', 'critique']
 
 
 class NutrientAdvice(BaseModel):

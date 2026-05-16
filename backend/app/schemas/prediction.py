@@ -2,19 +2,22 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.agronomic_advice import AgronomicAdvice
 from app.schemas.prediction_quality import ConfidenceDetails, PredictionStatus, QualityCheck
 
 
 class NutrientPrediction(BaseModel):
-    K_level: str
-    N_level: str
-    P_level: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    K_level: str = Field(alias="K", serialization_alias="K_level")
+    N_level: str = Field(alias="N", serialization_alias="N_level")
+    P_level: str = Field(alias="P", serialization_alias="P_level")
 
 
 class PredictionResponse(BaseModel):
+    analysis_id: str | None = None
     model_name: str
     prediction: NutrientPrediction | None = None
     confidence: float = Field(ge=0.0, le=1.0)
@@ -25,6 +28,13 @@ class PredictionResponse(BaseModel):
     interpretation: str
     recommendation: str
     agronomic_advice: AgronomicAdvice | None = None
+    field_advice: str | None = None
+    field_disclaimer: str | None = None
+    score: int | None = None
+    refused: bool = False
+    refusal_reason: str | None = None
+    image_name: str | None = None
+    image_url: str | None = None
     warning_message: str
     recommendation_message: str
     is_mock: bool

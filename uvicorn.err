@@ -1,0 +1,22 @@
+2026-05-15 23:45:06.119473: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-05-15 23:45:17.892110: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+INFO:     Started server process [13692]
+INFO:     Waiting for application startup.
+2026-05-15 23:45:30,244 - app.main - INFO - ============================================================
+2026-05-15 23:45:30,244 - app.main - INFO - === Démarrage backend SoilAI ===
+2026-05-15 23:45:30,244 - app.main - INFO - Project     : SoilAI
+2026-05-15 23:45:30,244 - app.main - INFO - API Version : v1
+2026-05-15 23:45:30,244 - app.main - INFO - Root dir    : C:\Users\surface pro 7\Desktop\npk_90percent
+2026-05-15 23:45:30,244 - app.main - INFO - Models dir  : C:\Users\surface pro 7\Desktop\npk_90percent
+2026-05-15 23:45:30,244 - app.main - INFO - Active family: efficientnetv2l
+2026-05-15 23:45:30,244 - app.main - INFO - Active model dir: C:\Users\surface pro 7\Desktop\npk_90percent\npk_models_efficientnetv2l
+2026-05-15 23:45:30,244 - app.main - INFO - Active model dir exists: True
+2026-05-15 23:45:30,248 - app.main - INFO - Database path : C:\Users\surface pro 7\Desktop\npk_90percent\backend\data\soilai.db
+2026-05-15 23:45:30,248 - app.main - INFO - Database exists: True
+2026-05-15 23:45:30,248 - app.services.ml_prediction_service - INFO - [ML] reset_global_models: cache cleared
+2026-05-15 23:45:30,248 - app.main - INFO - [Startup] reset_global_models done  0.016s
+2026-05-15 23:45:30,248 - app.services.ml_prediction_service - INFO - [ML] get_global_models \u2192 first call; loading from disk…
+2026-05-15 23:45:30.298792: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 AVX512F AVX512_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-05-15 23:46:01,556 - app.services.ml_prediction_service - INFO - [ML] Family 'densenet' loaded in 31.30s (8 labels found)
+2026-05-15 23:46:29,495 - app.services.ml_prediction_service - INFO - [ML] Family 'densenet201' loaded in 27.94s (8 labels found)

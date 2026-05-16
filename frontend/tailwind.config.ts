@@ -4,11 +4,22 @@ const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
+    './pages/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
     './lib/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
       colors: {
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        muted: 'hsl(var(--muted))',
+        'muted-foreground': 'hsl(var(--muted-foreground))',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        primary: 'hsl(var(--primary))',
+        'primary-foreground': 'hsl(var(--primary-foreground))',
         soil: {
           50: '#f7f6f1',
           100: '#ece7dc',
@@ -36,6 +47,12 @@ const config: Config = {
       },
       boxShadow: {
         soft: '0 18px 55px rgba(20, 28, 20, 0.10)',
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        xl: 'calc(var(--radius) + 0.25rem)',
+        '2xl': 'calc(var(--radius) + 0.5rem)',
+        '3xl': 'calc(var(--radius) + 0.875rem)',
       },
       backgroundImage: {
         'grain': 'radial-gradient(circle at 1px 1px, rgba(64, 82, 56, 0.10) 1px, transparent 0)',

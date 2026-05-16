@@ -201,6 +201,374 @@
   "8547c075-c3d0-4ba7-867e-4f2c9717c2f5": [
     {
       "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "d573571f-e5c0-4bc0-80d5-493a2f82dfab",
+      "parcel": null,
+      "image_name": "photo-1618212624319-3cd9681707e2.avif",
+      "analysis_id": "f4c47cf9-26af-42fc-b1fd-4f85b4e0cfe2",
+      "created_at": "2026-05-11T10:24:29.711038Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P1"
+        },
+        "confidence": 0.6669,
+        "status": "prediction_incertaine",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": true,
+          "status": "ok",
+          "width": 3000,
+          "height": 2000,
+          "brightness": 82.03,
+          "contrast": 39.75,
+          "sharpness": 30.64,
+          "issues": []
+        },
+        "confidence_details": {
+          "max_prob": 0.894,
+          "second_prob": 0.8553,
+          "margin": 0.0388,
+          "top_label": "K0",
+          "top_group": "K"
+        },
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "agronomic_advice": {
+          "potassium": {
+            "nutrient": "K",
+            "level": "K0",
+            "priority": "high",
+            "advice": "Le potassium semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Potassium à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "nitrogen": {
+            "nutrient": "N",
+            "level": "N0",
+            "priority": "high",
+            "advice": "Le azote semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Azote à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "phosphorus": {
+            "nutrient": "P",
+            "level": "P1",
+            "priority": "low",
+            "advice": "Le phosphore paraît correct. Continuez la surveillance sans conclure sur une dose à partir de cette seule image.",
+            "soil_status": "bon",
+            "summary": "Phosphore plutôt rassurant à ce stade.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "global_advice": {
+            "soil_score": 46,
+            "soil_level": "à surveiller",
+            "soil_status": "à surveiller",
+            "priority_focus": "K",
+            "priority_summary": "Potassium est l’élément principal à surveiller.",
+            "summary": "État global du sol : à surveiller. Élément principal à surveiller : potassium. Les autres nutriments à garder en tête sont azote, phosphore.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          }
+        },
+        "warning_message": "Prédiction incertaine: les scores sont trop proches ou trop bas pour une lecture fiable.",
+        "recommendation_message": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "is_mock": true,
+        "timestamp": "2026-05-11T10:24:29.711038Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.8940023183822632,
+          "K1": 0.1050096526741981,
+          "K2": 0.8552514910697937,
+          "N0": 0.6425018310546875,
+          "N1": 0.1170638352632522,
+          "N2": 0.4010717272758484,
+          "P0": 0.4249879121780395,
+          "P1": 0.4642910659313202
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "d573571f-e5c0-4bc0-80d5-493a2f82dfab",
+      "parcel": null,
+      "image_name": "photo-1618212624319-3cd9681707e2.avif",
+      "analysis_id": "baf22055-01e1-4526-9d67-553bba31c43a",
+      "created_at": "2026-05-11T10:24:24.368286Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P1"
+        },
+        "confidence": 0.6669,
+        "status": "prediction_incertaine",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": true,
+          "status": "ok",
+          "width": 3000,
+          "height": 2000,
+          "brightness": 82.03,
+          "contrast": 39.75,
+          "sharpness": 30.64,
+          "issues": []
+        },
+        "confidence_details": {
+          "max_prob": 0.894,
+          "second_prob": 0.8553,
+          "margin": 0.0388,
+          "top_label": "K0",
+          "top_group": "K"
+        },
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "agronomic_advice": {
+          "potassium": {
+            "nutrient": "K",
+            "level": "K0",
+            "priority": "high",
+            "advice": "Le potassium semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Potassium à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "nitrogen": {
+            "nutrient": "N",
+            "level": "N0",
+            "priority": "high",
+            "advice": "Le azote semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Azote à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "phosphorus": {
+            "nutrient": "P",
+            "level": "P1",
+            "priority": "low",
+            "advice": "Le phosphore paraît correct. Continuez la surveillance sans conclure sur une dose à partir de cette seule image.",
+            "soil_status": "bon",
+            "summary": "Phosphore plutôt rassurant à ce stade.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "global_advice": {
+            "soil_score": 46,
+            "soil_level": "à surveiller",
+            "soil_status": "à surveiller",
+            "priority_focus": "K",
+            "priority_summary": "Potassium est l’élément principal à surveiller.",
+            "summary": "État global du sol : à surveiller. Élément principal à surveiller : potassium. Les autres nutriments à garder en tête sont azote, phosphore.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          }
+        },
+        "warning_message": "Prédiction incertaine: les scores sont trop proches ou trop bas pour une lecture fiable.",
+        "recommendation_message": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "is_mock": true,
+        "timestamp": "2026-05-11T10:24:24.368286Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.8940023183822632,
+          "K1": 0.1050096526741981,
+          "K2": 0.8552514910697937,
+          "N0": 0.6425018310546875,
+          "N1": 0.1170638352632522,
+          "N2": 0.4010717272758484,
+          "P0": 0.4249879121780395,
+          "P1": 0.4642910659313202
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "d573571f-e5c0-4bc0-80d5-493a2f82dfab",
+      "parcel": null,
+      "image_name": "photo-1618212624319-3cd9681707e2.avif",
+      "analysis_id": "dc17a386-b0b3-4d18-8025-06d2dcfbfe26",
+      "created_at": "2026-05-11T10:21:59.316671Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P1"
+        },
+        "confidence": 0.6669,
+        "status": "prediction_incertaine",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": true,
+          "status": "ok",
+          "width": 3000,
+          "height": 2000,
+          "brightness": 82.03,
+          "contrast": 39.75,
+          "sharpness": 30.64,
+          "issues": []
+        },
+        "confidence_details": {
+          "max_prob": 0.894,
+          "second_prob": 0.8553,
+          "margin": 0.0388,
+          "top_label": "K0",
+          "top_group": "K"
+        },
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P1. Exploratory result that should be confirmed by laboratory analysis.",
+        "recommendation": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "agronomic_advice": {
+          "potassium": {
+            "nutrient": "K",
+            "level": "K0",
+            "priority": "high",
+            "advice": "Le potassium semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Potassium à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "nitrogen": {
+            "nutrient": "N",
+            "level": "N0",
+            "priority": "high",
+            "advice": "Le azote semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Azote à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "phosphorus": {
+            "nutrient": "P",
+            "level": "P1",
+            "priority": "low",
+            "advice": "Le phosphore paraît correct. Continuez la surveillance sans conclure sur une dose à partir de cette seule image.",
+            "soil_status": "bon",
+            "summary": "Phosphore plutôt rassurant à ce stade.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "global_advice": {
+            "soil_score": 46,
+            "soil_level": "à surveiller",
+            "soil_status": "à surveiller",
+            "priority_focus": "K",
+            "priority_summary": "Potassium est l’élément principal à surveiller.",
+            "summary": "État global du sol : à surveiller. Élément principal à surveiller : potassium. Les autres nutriments à garder en tête sont azote, phosphore.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          }
+        },
+        "warning_message": "Prédiction incertaine: les scores sont trop proches ou trop bas pour une lecture fiable.",
+        "recommendation_message": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "is_mock": true,
+        "timestamp": "2026-05-11T10:21:59.316671Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.8940023183822632,
+          "K1": 0.1050096526741981,
+          "K2": 0.8552514910697937,
+          "N0": 0.6425018310546875,
+          "N1": 0.1170638352632522,
+          "N2": 0.4010717272758484,
+          "P0": 0.4249879121780395,
+          "P1": 0.4642910659313202
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+      "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
+      "parcel": null,
+      "image_name": "AdobeStock_300277214.jpg",
+      "analysis_id": "e963cf28-4f74-4394-995e-979369719b52",
+      "created_at": "2026-05-10T10:29:00.951373Z",
+      "prediction": {
+        "model_name": "SoilAI EfficientNetV2L",
+        "prediction": {
+          "K_level": "K0",
+          "N_level": "N0",
+          "P_level": "P0"
+        },
+        "confidence": 0.99,
+        "status": "prediction_incertaine",
+        "can_trust_result": false,
+        "quality_check": {
+          "valid": true,
+          "status": "ok",
+          "width": 1200,
+          "height": 800,
+          "brightness": 144.89,
+          "contrast": 28.97,
+          "sharpness": 44.49,
+          "issues": []
+        },
+        "confidence_details": {
+          "max_prob": 1.0,
+          "second_prob": 0.9995,
+          "margin": 0.0004,
+          "top_label": "K0",
+          "top_group": "K"
+        },
+        "interpretation": "Indicative NPK estimate: K0 / N0 / P0. Strong signal for a field pre-diagnosis.",
+        "recommendation": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "agronomic_advice": {
+          "potassium": {
+            "nutrient": "K",
+            "level": "K0",
+            "priority": "high",
+            "advice": "Le potassium semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Potassium à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "nitrogen": {
+            "nutrient": "N",
+            "level": "N0",
+            "priority": "high",
+            "advice": "Le azote semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Azote à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "phosphorus": {
+            "nutrient": "P",
+            "level": "P0",
+            "priority": "high",
+            "advice": "Le phosphore semble faible. Une confirmation en laboratoire est recommandée avant toute correction.",
+            "soil_status": "faible",
+            "summary": "Phosphore à surveiller en priorité.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          },
+          "global_advice": {
+            "soil_score": 25,
+            "soil_level": "critique",
+            "soil_status": "critique",
+            "priority_focus": "K",
+            "priority_summary": "Potassium est l’élément principal à surveiller.",
+            "summary": "État global du sol : critique. Élément principal à surveiller : potassium. Les autres nutriments à garder en tête sont azote, phosphore.",
+            "warning": "Ce conseil reste indicatif et provient d’une image. Il ne donne pas de dose d’engrais: une analyse de laboratoire et un avis agronomique restent nécessaires avant toute décision."
+          }
+        },
+        "warning_message": "Prédiction incertaine: les scores sont trop proches ou trop bas pour une lecture fiable.",
+        "recommendation_message": "Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.",
+        "is_mock": true,
+        "timestamp": "2026-05-10T10:29:00.951373Z",
+        "source": "uploaded_image:8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
+        "model_status": "prepared",
+        "probabilities": {
+          "K0": 0.9999614357948304,
+          "K1": 0.0038725661579519,
+          "K2": 0.0024176386650651,
+          "N0": 0.9992609024047852,
+          "N1": 0.0768900737166404,
+          "N2": 0.0043607498519122,
+          "P0": 0.999547243118286,
+          "P1": 0.0022053446155041
+        }
+      }
+    },
+    {
+      "user_id": "8547c075-c3d0-4ba7-867e-4f2c9717c2f5",
       "parcel_id": "57e7364a-cf55-4cdb-94b9-c47ac7ced747",
       "parcel": null,
       "image_name": "istockphoto-155282442-612x612.jpg",

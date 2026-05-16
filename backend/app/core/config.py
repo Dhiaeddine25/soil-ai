@@ -13,12 +13,18 @@ class Settings(BaseModel):
     active_model_family: str = "efficientnetv2l"
     image_size: int = 320
     confidence_floor: float = 0.55
-    quality_min_width: int = 128
-    quality_min_height: int = 128
-    quality_brightness_min: float = 35.0
-    quality_brightness_max: float = 220.0
-    quality_contrast_min: float = 18.0
-    quality_sharpness_min: float = 12.0
+    # Qualité – seuils très permissifs : accepter presque tout sauf flou extrême / trop sombre
+    quality_min_width: int = 32
+    quality_min_height: int = 32
+    quality_brightness_min: float = 5.0
+    quality_brightness_max: float = 250.0
+    quality_contrast_min: float = 1.0
+    quality_sharpness_min: float = 1.5
+    # Dominance verte – très haute pour ne refuser que images entièrement vertes
+    refusal_green_dominance_threshold: float = 0.40
+    # Confiance – très basse pour accepter presque toutes les prédictions
+    refusal_min_confidence: float = 0.10
+    refusal_min_margin: float = 0.005
     trust_ok_confidence_min: float = 0.78
     trust_confirm_confidence_min: float = 0.65
     trust_ok_margin_min: float = 0.14

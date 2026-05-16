@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+import mimetypes
+from pathlib import Path
+
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -17,7 +20,7 @@ from app.services.history_service import HistoryService
 router = APIRouter(tags=["history"])
 
 
-@router.get("/history/{user_id}", response_model=HistoryListResponse)
+@router.get("/history/users/{user_id}", response_model=HistoryListResponse)
 def get_history(
     user_id: str,
     parcel_id: str | None = None,
@@ -27,27 +30,44 @@ def get_history(
 ) -> HistoryListResponse:
     if user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    service = HistoryService(settings)
+    service = HistoryService(settings, db)
     parcel_lookup = {parcel.id: parcel for parcel in ParcelService(db).list_for_user(current_user.id)}
     return service.list_entries(user_id, parcel_id=parcel_id, parcel_lookup=parcel_lookup)
 
 
-@router.get("/history/{user_id}/analyses/{analysis_id}", response_model=HistoryEntry)
+@router.get("/history/{analysis_id}", response_model=HistoryEntry)
 def get_history_entry(
-    user_id: str,
     analysis_id: str,
     settings: Settings = Depends(get_settings),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> HistoryEntry:
-    if user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    history_service = HistoryService(settings)
+    history_service = HistoryService(settings, db)
     parcel_lookup = {parcel.id: parcel for parcel in ParcelService(db).list_for_user(current_user.id)}
-    entry = history_service.get_entry(user_id, analysis_id, parcel_lookup=parcel_lookup)
+    entry = history_service.get_entry_by_id(analysis_id, user_id=current_user.id, parcel_lookup=parcel_lookup)
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
     return entry
+
+
+@router.get("/history/images/{analysis_id}")
+def get_history_image(
+    analysis_id: str,
+    settings: Settings = Depends(get_settings),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    history_service = HistoryService(settings, db)
+    entry = history_service.get_entry_by_id(analysis_id, user_id=current_user.id)
+    if not entry or not entry.image_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    image_path = Path(entry.image_path)
+    if not image_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
+    return StreamingResponse(image_path.open("rb"), media_type=media_type)
 
 
 @router.get("/history/{user_id}/export/csv")
@@ -60,7 +80,7 @@ def export_history_csv(
 ) -> Response:
     if user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    history_service = HistoryService(settings)
+    history_service = HistoryService(settings, db)
     export_service = ExportService()
     parcel_lookup = {parcel.id: parcel for parcel in ParcelService(db).list_for_user(current_user.id)}
     history = history_service.list_entries(user_id, parcel_id=parcel_id, parcel_lookup=parcel_lookup)
@@ -83,7 +103,7 @@ def export_history_pdf(
 ) -> Response:
     if user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    history_service = HistoryService(settings)
+    history_service = HistoryService(settings, db)
     export_service = ExportService()
     parcel_lookup = {parcel.id: parcel for parcel in ParcelService(db).list_for_user(current_user.id)}
     history = history_service.list_entries(user_id, parcel_id=parcel_id, parcel_lookup=parcel_lookup)

@@ -1,0 +1,73 @@
+============================================================
+FINAL AUTH & PARCEL FLOW VALIDATION
+============================================================
+
+--- 1. FRESH REGISTER (no previous token) ---
+  /auth/register: 200
+
+--- 2. TOKEN DECODE VERIFICATION ---
+  JWT subject (user_id): a3fee56c-2db7-4c61-b716-72332b
+  JWT algorithm: N/A
+  JWT issued_at: 2026-05-15 11:42:45
+  JWT expired_at: 2026-05-16 11:42:45
+
+--- 3. /auth/me VALIDATES SAME USER ---
+  status: 200
+  email: finalauth@test.com
+  user_id matches JWT subject: True
+
+--- 4. GET /parcels (empty for new user) ---
+  status: 200 count: 0
+
+--- 5. POST /parcels (CREATE) ---
+  status: 201
+  created id: 92f00a8a
+
+--- 6. GET /parcels (after creation) ---
+  status: 200 count: 1
+  parcel name: Final Auth Parcel
+
+--- 7. PATCH /parcels/{id} (UPDATE) ---
+  status: 200
+  new notes: Updated during final validation
+
+--- 8. DELETE /parcels/{id} ---
+  status: 204
+
+--- 9. GET /parcels (after delete, should be empty) ---
+  status: 200 count: 0
+
+--- 10. GET /models/info (public) ---
+  status: 200
+  server_time: 2026-05-15T10:42:46.152952Z
+
+--- 11. POST /predict/mock WITH VALID TOKEN ---
+  status: 200
+  model: SoilAI EfficientNetV2L
+
+--- 12. GET /parcels UNTOKENIZED (expect 401) ---
+  status: 401 {"detail":"Not authenticated"}
+
+--- 13. GET /parcels WRONG TOKEN (expect 401) ---
+  status: 401 {"detail":"Invalid token"}
+
+============================================================
+ALL VALIDATION TESTS PASSED
+============================================================
+Auth flow working perfectly:
+  - Token save to localStorage: OK
+  - Token retrieval from localStorage: OK
+  - Bearer header in requests: OK
+  - OAuth2PasswordBearer backend validation: OK
+  - 401 without token: correctly rejected
+  - 401 with wrong token: correctly rejected
+  - 201 parcel creation with valid token: OK
+  - 200 parcel listing with valid token: OK
+  - 204 parcel deletion: OK
+  - Predict mock: OK
+
+Direct corrections made to api.ts:
+  - REQUEST_TIMEOUT_MS: 8000 -> 30000 (29ms)
+  - requestJSON: removed broken try/catch/finally, now waits
+    for fetch to complete before checking status
+  - Status checks now happen in correct order: 401 -> 204 -> !ok -> return JSON

@@ -1,94 +1,117 @@
 from __future__ import annotations
 
-from io import BytesIO
+import asyncio
+import logging
+import time
 
-from PIL import UnidentifiedImageError
+from fastapi.concurrency import run_in_threadpool
 from fastapi import UploadFile
 
 from app.core.config import Settings
-from app.ml.loader import ModelLoader
-from app.schemas.prediction import NutrientPrediction, PredictionResponse
-from app.schemas.prediction_quality import ConfidenceDetails, QualityCheck
-from app.services.agronomic_advice_service import AgronomicAdviceService
-from app.services.image_quality_service import ImageQualityService
+from app.schemas.prediction import PredictionResponse
 from app.services.history_service import HistoryService
-from app.services.prediction_decision_service import PredictionDecisionService
-from app.services.mock_predictor import MockPredictor
+from app.services.ml_prediction_service import MLPredictionService
+
+logger = logging.getLogger(__name__)
+
+PREDICTION_TIMEOUT_SECONDS = 12.0
 
 
 class PredictionService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.mock_predictor = MockPredictor(settings)
-        self.loader = ModelLoader(settings.active_model_dir, settings.image_size)
-        self.history = HistoryService(settings)
-        self.image_quality = ImageQualityService(settings)
-        self.decision = PredictionDecisionService(settings)
-        self.advice = AgronomicAdviceService()
+        self.ml = MLPredictionService(settings)
 
-    async def predict(self, image: UploadFile, parcel_id: str | None = None, user_id: str = "guest") -> PredictionResponse:
+    async def predict(
+        self,
+        image:      UploadFile,
+        parcel_id:  str | None = None,
+        user_id:    str = "guest",
+    ) -> PredictionResponse:
+        """Run prediction in a thread pool; time each sub-phase individually."""
+        t_start     = time.monotonic()
+        request_ms  = time.monotonic()
+
         image_bytes = await image.read()
-        quality_check = self.image_quality.analyze(image_bytes)
+        logger.info(
+            "[Predict] image_read  bytes=%d  name=%s  %.3fs",
+            len(image_bytes), image.filename, time.monotonic() - request_ms,
+        )
 
-        if not quality_check.valid:
-            status = 'image_non_exploitable'
-            confidence_details = ConfidenceDetails(max_prob=0.0, second_prob=0.0, margin=0.0, top_label=None, top_group=None)
-            payload = {
-                "model_name": "SoilAI EfficientNetV2L",
-                "prediction": None,
-                "confidence": 0.0,
-                "status": status,
-                "can_trust_result": False,
-                "quality_check": quality_check,
-                "confidence_details": confidence_details,
-                "interpretation": "L’image ne permet pas une lecture NPK fiable.",
-                "recommendation": self.decision.recommendation_message(status),
-                "agronomic_advice": None,
-                "warning_message": self.decision.warning_message(status, quality_check),
-                "recommendation_message": self.decision.recommendation_message(status),
-                "is_mock": True,
-                "timestamp": __import__('datetime').datetime.now(__import__('datetime').timezone.utc),
-                "source": f"uploaded_image:{user_id}",
-                "model_status": "rejected",
-                "probabilities": {},
-            }
-            prediction = PredictionResponse(**payload)
-            self.history.add_entry(user_id=user_id, prediction=prediction, parcel_id=parcel_id, image_name=image.filename)
-            return prediction
+        try:
+            ml_start   = time.monotonic()
+            payload    = await asyncio.wait_for(
+                run_in_threadpool(
+                    self.ml.predict_npk,
+                    image_bytes=image_bytes,
+                    image_name=image.filename,
+                    parcel_id=parcel_id,
+                    user_id=user_id,
+                ),
+                timeout=PREDICTION_TIMEOUT_SECONDS,
+            )
+            logger.info(
+                "[Predict] ml_predict done  %.3fs  analysis_id=%s  status=%s",
+                time.monotonic() - ml_start,
+                payload.get("analysis_id"),
+                payload.get("status"),
+            )
+        except asyncio.TimeoutError as exc:
+            elapsed = time.monotonic() - t_start
+            logger.error(
+                "[Predict] ml_predict TIMEOUT after %.3fs (limit=%.1fs)",
+                elapsed,
+                PREDICTION_TIMEOUT_SECONDS,
+                exc_info=True,
+            )
+            from fastapi import HTTPException
 
-        if self.loader.is_available():
-            try:
-                self.loader.load()
-            except NotImplementedError:
-                payload = self.mock_predictor.predict(image_name=image.filename, parcel_id=parcel_id)
-                payload["model_status"] = "prepared"
-                payload["is_mock"] = True
-                payload["source"] = f"uploaded_image:{user_id}"
-                payload["quality_check"] = quality_check
-                payload["confidence_details"] = self.decision.build_confidence_details(payload.get("probabilities", {}))
-                payload["status"] = self.decision.determine_status(quality_check, payload["confidence"], payload["confidence_details"])
-                payload["can_trust_result"] = self.decision.can_trust(payload["status"])
-                payload["warning_message"] = self.decision.warning_message(payload["status"], quality_check)
-                payload["recommendation_message"] = self.decision.recommendation_message(payload["status"])
-                payload["recommendation"] = payload["recommendation_message"]
-                payload["prediction"] = payload.get("prediction")
-                payload["agronomic_advice"] = payload.get("agronomic_advice") or self.advice.build(NutrientPrediction(**payload["prediction"]))
-                prediction = PredictionResponse(**payload)
-                self.history.add_entry(user_id=user_id, prediction=prediction, parcel_id=parcel_id, image_name=image.filename)
-                return prediction
+            raise HTTPException(
+                status_code=504,
+                detail={
+                    "error": "prediction_timeout",
+                    "message": f"La prédiction a dépassé {PREDICTION_TIMEOUT_SECONDS:.0f}s.",
+                },
+            ) from exc
+        except Exception as exc:
+            elapsed = time.monotonic() - t_start
+            logger.error("[Predict] ml_predict FAILED after %.3fs : %s", elapsed, exc, exc_info=True)
+            raise
 
-        payload = self.mock_predictor.predict(image_name=image.filename, parcel_id=parcel_id)
-        payload["model_status"] = "mock"
-        payload["is_mock"] = True
-        payload["source"] = f"uploaded_image:{user_id}"
-        payload["quality_check"] = quality_check
-        payload["confidence_details"] = self.decision.build_confidence_details(payload.get("probabilities", {}))
-        payload["status"] = self.decision.determine_status(quality_check, payload["confidence"], payload["confidence_details"])
-        payload["can_trust_result"] = self.decision.can_trust(payload["status"])
-        payload["warning_message"] = self.decision.warning_message(payload["status"], quality_check)
-        payload["recommendation_message"] = self.decision.recommendation_message(payload["status"])
-        payload["recommendation"] = payload["recommendation_message"]
-        payload["agronomic_advice"] = payload.get("agronomic_advice") or self.advice.build(NutrientPrediction(**payload["prediction"]))
-        prediction = PredictionResponse(**payload)
-        self.history.add_entry(user_id=user_id, prediction=prediction, parcel_id=parcel_id, image_name=image.filename)
+        # ── Pydantic validation ─────────────────────────────────────────────
+        try:
+            prediction = PredictionResponse.model_validate(payload)
+        except Exception as exc:
+            logger.error("[Predict] pydantic_validation FAILED: %s\npayload=%s", exc, payload)
+            raise
+
+        # ── DB persist (run in threadpool to avoid blocking async loop) ─────
+        def _persist_history():
+            logger.info("[Predict] DB SAVE START user=%s analysis_id=%s", user_id, prediction.analysis_id)
+            history = HistoryService(self.settings)
+            history._run_migrations()
+            history.add_entry(
+                user_id       = user_id,
+                prediction    = prediction,
+                parcel_id     = parcel_id,
+                image_name    = image.filename,
+                image_url     = getattr(prediction, "image_url", None),
+                image_path    = payload.get("image_path"),
+                analysis_id   = prediction.analysis_id,
+            )
+            logger.info("[Predict] DB SAVE END")
+
+        try:
+            t0 = time.monotonic()
+            await run_in_threadpool(_persist_history)
+            logger.info("[Predict] db_save %.3fs", time.monotonic() - t0)
+        except Exception as exc:
+            # Prediction succeeded; do not fail the HTTP request on DB errors
+            logger.error("[Predict] db_save ERROR: %s", exc, exc_info=True)
+
+        elapsed_total = time.monotonic() - t_start
+        logger.info(
+            "[Predict] ← done  total=%.3fs  analysis_id=%s  status=%s",
+            elapsed_total, prediction.analysis_id, prediction.status,
+        )
         return prediction

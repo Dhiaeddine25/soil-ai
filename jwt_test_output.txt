@@ -1,0 +1,35 @@
+=== JWT AUTH FLOW ===
+
+[1] REGISTER
+     Token: eyJhbGciOiJIUzI1NiIsInR5cCI6Ik
+
+[2] /auth/me
+     user_id: 015570cc-ffe
+     email: jwttest@test.com
+
+[3] GET /parcels
+     count: 0
+
+[4] POST /parcels
+     Created: ad839ddc
+
+[5] GET /parcels/ad839ddc
+     name: JWTAuthParcel
+
+[6] Decoded JWT sub (user_id)
+     JWT sub: 015570cc-ffe7-43d7-8bb9-4358cc
+
+[7] GET /history/users/015570cc-ffe
+
+[8] WRONG token (expect 401)
+     Correctly 401: True
+
+[9] NO token (expect 401)
+     Correctly 401: True
+
+=== AUTH FLOW COMPLETE ===
+verify: localStorage saves token  [JS bundle shows getItem/setItem]
+verify: Bearer header sent         [JS bundle shows Authorization: Bearer]
+verify: OAuth2PasswordBearer        [deps.py uses tokenUrl=/auth/login]
+verify: all 401 without token       [backend deps.py returns 401]
+verify: all 200 with token          [full flow works]

@@ -11,7 +11,7 @@ import { useI18n } from '@/components/i18n/i18n-provider';
 import { downloadHistoryCsv, downloadHistoryPdf, getHistory, listParcels } from '@/lib/api';
 import type { HistoryListResponse, ParcelPublic } from '@/lib/types';
 import { parcelHistory, samplePrediction } from '@/lib/mock';
-import { buildTimeline, getNutrientLevelLabel, getSoilScore } from '@/lib/soil-insights';
+import { buildTimeline, getNutrientLevelLabel, getPredictionStatusLabel, getSoilScore } from '@/lib/soil-insights';
 
 export function HistoryCenter() {
   const { user, token, loading } = useAuth();
@@ -19,6 +19,8 @@ export function HistoryCenter() {
   const [history, setHistory] = useState<HistoryListResponse | null>(null);
   const [parcels, setParcels] = useState<ParcelPublic[]>([]);
   const [selectedParcelId, setSelectedParcelId] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ok' | 'confirmation_recommandee' | 'prediction_incertaine' | 'image_non_exploitable'>('all');
+  const [lowConfidenceOnly, setLowConfidenceOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
@@ -96,6 +98,18 @@ export function HistoryCenter() {
   };
 
   const entries = history?.entries ?? [];
+  const filteredEntries = entries.filter((entry) => {
+    if (!entry.prediction) {
+      return false;
+    }
+    if (statusFilter !== 'all' && entry.prediction.status !== statusFilter) {
+      return false;
+    }
+    if (lowConfidenceOnly && (entry.prediction.confidence ?? 0) >= 0.75) {
+      return false;
+    }
+    return true;
+  });
   const timeline = buildTimeline(entries);
 
   return (
@@ -131,10 +145,32 @@ export function HistoryCenter() {
         </div>
 
         <Card>
-          <div className="text-sm uppercase tracking-[0.18em] text-soil-500">{messages.history.title}</div>
+          <div className="text-sm uppercase tracking-[0.18em] text-soil-500">Historique des analyses</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: 'Toutes' },
+              { key: 'ok', label: 'Analyse prete' },
+              { key: 'confirmation_recommandee', label: 'A confirmer' },
+              { key: 'prediction_incertaine', label: 'Incertaine' },
+              { key: 'image_non_exploitable', label: 'Non exploitable' },
+            ].map((item) => (
+              <Button
+                key={item.key}
+                type="button"
+                variant={statusFilter === item.key ? 'secondary' : 'ghost'}
+                onClick={() => setStatusFilter(item.key as typeof statusFilter)}
+              >
+                {item.label}
+              </Button>
+            ))}
+            <Button type="button" variant={lowConfidenceOnly ? 'secondary' : 'ghost'} onClick={() => setLowConfidenceOnly((current) => !current)}>
+              Confiance faible
+            </Button>
+          </div>
           <div className="mt-4 space-y-3">
-            {entries.length ? entries.map((entry) => {
+            {filteredEntries.length ? filteredEntries.map((entry) => {
               const prediction = entry.prediction;
+              const soil = getSoilScore(prediction);
               return (
                 <Link key={entry.analysis_id} href={`/history/${entry.analysis_id}`} className="block rounded-2xl border border-soil-200 bg-white p-4 transition hover:border-leaf-300 hover:shadow-sm">
                   <div className="flex items-center justify-between gap-3">
@@ -146,12 +182,12 @@ export function HistoryCenter() {
                       {prediction ? `${Math.round(prediction.confidence * 100)}%` : '—'}
                     </div>
                   </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-soil-700">
-                      <div className="rounded-xl bg-stone-50 px-3 py-2">Potassium {getNutrientLevelLabel(prediction?.prediction?.K_level)}</div>
-                      <div className="rounded-xl bg-stone-50 px-3 py-2">Azote {getNutrientLevelLabel(prediction?.prediction?.N_level)}</div>
-                      <div className="rounded-xl bg-stone-50 px-3 py-2">Phosphore {getNutrientLevelLabel(prediction?.prediction?.P_level)}</div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-soil-700">Potassium {getNutrientLevelLabel(prediction?.prediction?.K_level)}</div>
+                    <div className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-soil-700">Azote {getNutrientLevelLabel(prediction?.prediction?.N_level)}</div>
+                    <div className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-soil-700">Phosphore {getNutrientLevelLabel(prediction?.prediction?.P_level)}</div>
                   </div>
-                  <div className="mt-3 text-xs uppercase tracking-[0.18em] text-soil-500">{prediction?.status === 'ok' ? 'Analyse prête' : prediction?.status === 'prediction_incertaine' ? 'Résultat incertain' : prediction?.status === 'confirmation_recommandee' ? 'Confirmation recommandée' : 'Image non exploitable'}</div>
+                  <div className="mt-3 text-xs uppercase tracking-[0.18em] text-soil-500">{getPredictionStatusLabel(prediction?.status)} · {soil.status}</div>
                 </Link>
               );
             }) : <div className="rounded-2xl border border-soil-200 bg-stone-50 p-4 text-sm text-soil-600">{messages.history.empty}</div>}

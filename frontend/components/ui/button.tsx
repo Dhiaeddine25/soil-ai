@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -13,6 +13,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     primary: 'bg-soil-900 text-white hover:bg-soil-800 shadow-soft',
     secondary: 'bg-leaf-600 text-white hover:bg-leaf-500 shadow-soft',
     ghost: 'bg-white/70 text-soil-900 border border-soil-200 hover:bg-white',
+    outline: 'bg-transparent border-2 border-soil-200 text-soil-900 hover:bg-soil-50',
   };
 
   return (

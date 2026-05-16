@@ -20,6 +20,10 @@ class ParcelService:
             user_id=parcel.user_id,
             name=parcel.name,
             location=parcel.location,
+            region=parcel.region,
+            area_ha=parcel.area_ha,
+            crop=parcel.crop,
+            notes=parcel.notes,
             latitude=parcel.latitude,
             longitude=parcel.longitude,
             created_at=parcel.created_at,
@@ -41,6 +45,10 @@ class ParcelService:
             user_id=user_id,
             name=payload.name.strip(),
             location=location,
+            region=payload.region.strip() if payload.region else None,
+            area_ha=payload.area_ha,
+            crop=payload.crop.strip() if payload.crop else None,
+            notes=payload.notes.strip() if payload.notes else None,
             latitude=payload.latitude if location else None,
             longitude=payload.longitude if location else None,
             created_at=datetime.now(timezone.utc),
@@ -64,6 +72,15 @@ class ParcelService:
         elif payload.latitude is not None or payload.longitude is not None:
             parcel.latitude = payload.latitude
             parcel.longitude = payload.longitude
+
+        if payload.region is not None:
+            parcel.region = payload.region.strip() or None
+        if payload.area_ha is not None:
+            parcel.area_ha = payload.area_ha
+        if payload.crop is not None:
+            parcel.crop = payload.crop.strip() or None
+        if payload.notes is not None:
+            parcel.notes = payload.notes.strip() or None
 
         self.db.commit()
         self.db.refresh(parcel)

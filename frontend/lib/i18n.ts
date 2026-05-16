@@ -128,8 +128,8 @@ const messages: Record<Locale, TranslationTable> = {
     },
     landing: {
       eyebrow: 'Outil privé',
-      title: 'Analyser une parcelle sans se perdre dans l’interface',
-      subtitle: 'Choisissez une parcelle, ajoutez une image, lisez le résultat NPK et retrouvez l’historique en quelques secondes.',
+      title: 'Analysez une parcelle sans vous perdre dans l’interface',
+      subtitle: 'Choisissez une parcelle, ajoutez une image, lisez le résultat NPK et retrouvez votre historique en quelques secondes.',
       primary: 'Commencer',
       secondary: 'Voir l’espace privé',
       note: 'Conçu pour un usage simple sur mobile, tablette et ordinateur.',

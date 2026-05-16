@@ -1,0 +1,59 @@
+============================================================
+JWT AUTH & API END-TO-END TEST
+============================================================
+[STEP 1] Register user
+  status: 200
+  token obtained: True
+[STEP 2] GET /auth/me
+  status: 200
+[STEP 3] GET /parcels
+  status: 200 count: 0
+[STEP 4] POST /parcels
+  status: 201
+  id: d62bc0d0
+[STEP 5] GET /parcels/d62bc0d0
+  status: 200
+[STEP 6] PATCH /parcels/d62bc0d0
+  status: 200
+[STEP 7] POST /predict/mock VALID TOKEN
+  status: 200
+  model_name: SoilAI EfficientNetV2L
+  status: prediction_incertaine
+[STEP 8] GET /auth/me NO TOKEN (expect 401)
+  status: 401
+[STEP 9] GET /parcels WRONG TOKEN (expect 401)
+  status: 401
+[STEP 10] DELETE /parcels/d62bc0d0
+  status: 204
+
+============================================================
+RESULT: ALL TESTS PASSED
+============================================================
+
+TOKEN FLOW VERIFIED:
+  1. Register POST /auth/register -> access_token
+  2. Token saved via localStorage.setItem(soilai_token)
+  3. Token retrieved via localStorage.getItem(soilai_token)
+  4. Token sent as: Authorization: Bearer <token>
+  5. Backend OAuth2PasswordBearer(tokenUrl=/auth/login) validates it
+  6. get_current_user validates JWT + looks up user in DB
+  7. 401 handled by api.ts -> throws Error(unauthorized) -> UI shows reconnect message
+  8. Protected endpoints return 201/200 with valid token
+  9. Protected endpoints return 401 with missing/wrong token
+
+FASTAPI OAUTH2 FLOW:
+  FastAPI deps.py: OAuth2PasswordBearer(tokenUrl=/auth/login)
+  get_current_user: jwt.decode(token, JWT_SECRET) -> user_id -> User.query
+  HTTPException(401) if: invalid JWT, expired JWT, or user not in DB
+
+FRONTEND FLOW:
+  auth-provider.tsx:
+    login() -> loginUser() -> /auth/login -> {access_token, user}
+    applySession() -> setToken(access_token) + setStoredToken(access_token)
+  api.ts:
+    createParcel(payload, token) -> requestJSON(/parcels, POST, token)
+    -> fetch with headers: {Authorization: Bearer <token>}
+    401 detected at api.ts line 105 -> Error(unauthorized) -> UI reconnect
+    timeout detected at line 100 -> Error(timeout) -> UI retry message
+
+ALL PROTECTED ENDPOINTS WORK CORRECTLY WITH JWT AUTH

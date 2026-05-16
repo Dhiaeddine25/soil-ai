@@ -115,7 +115,7 @@ export function getPredictionStatusLabel(status?: string | null) {
 export function getSoilScore(prediction?: PredictionResponse | null) {
   const advice = prediction?.agronomic_advice?.global_advice;
   return {
-    score: advice?.soil_score ?? 0,
+    score: prediction?.score ?? advice?.soil_score ?? 0,
     level: advice?.soil_level ?? 'critique',
     status: getSoilStatusLabel(advice?.soil_status),
     focus: advice?.priority_focus ?? 'P',

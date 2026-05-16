@@ -45,24 +45,23 @@ class PredictionDecisionService:
 
     def warning_message(self, status: PredictionStatus, quality_check: QualityCheck) -> str:
         if status == 'image_non_exploitable':
-            reason = ', '.join(quality_check.issues) if quality_check.issues else 'qualité insuffisante'
-            return f"Image non exploitable: {reason}. Reprendre une image plus nette, plus lisible et mieux exposée."
+            return 'Cette image ne permet pas une estimation fiable du sol.'
         if status == 'prediction_incertaine':
-            return 'Prédiction incertaine: les scores sont trop proches ou trop bas pour une lecture fiable.'
+            return 'Resultat incertain: les signaux sont trop faibles pour etre conclusifs.'
         if status == 'confirmation_recommandee':
-            return 'Confirmation recommandée: le résultat est exploitable mais mérite une validation terrain ou laboratoire.'
-        return 'Résultat exploitable pour un pré-diagnostic indicatif.'
+            return 'Resultat exploitable avec prudence: confirmation terrain ou laboratoire recommandee.'
+        return 'Resultat exploitable pour un pre-diagnostic indicatif.'
 
     def recommendation_message(self, status: PredictionStatus) -> str:
         if status == 'image_non_exploitable':
-            return 'Reprendre une image mieux cadrée, plus nette et plus contrastée avant de relancer l’analyse.'
+            return 'Reprendre une photo plus nette, bien eclairee et centree sur le sol.'
         if status == 'prediction_incertaine':
-            return 'Relancer l’analyse avec une image plus lisible ou compléter par une confirmation externe.'
+            return 'Refaire une photo plus lisible ou completer par une verification externe.'
         if status == 'confirmation_recommandee':
-            return 'Résultat utilisable avec prudence: confirmer avant toute décision agronomique définitive.'
-        return 'Résultat jugé suffisamment robuste pour un pré-diagnostic indicatif.'
+            return 'Resultat utilisable avec prudence: confirmer avant decision importante.'
+        return 'Resultat suffisant pour un pre-diagnostic indicatif.'
 
     def result_summary(self, status: PredictionStatus, prediction: NutrientPrediction | None) -> str:
         if status == 'image_non_exploitable' or prediction is None:
             return 'L’image ne permet pas une interprétation fiable.'
-        return f"Classe NPK retenue: {prediction.K_level} / {prediction.N_level} / {prediction.P_level}."
+        return 'Lecture NPK disponible. Detail par nutriment a consulter.'
