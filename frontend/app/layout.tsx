@@ -10,6 +10,13 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SoilAI',
   description: 'Private agritech workspace for parcel analysis, history, and reports.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg?v=2', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.svg?v=2',
+    apple: '/favicon.svg?v=2',
+  },
 };
 
 const sora = Sora({ subsets: ['latin'], display: 'swap', variable: '--font-sora' });
