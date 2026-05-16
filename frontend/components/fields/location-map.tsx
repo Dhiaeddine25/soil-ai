@@ -2,34 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 
-import type { LeafletMouseEvent, Map as LeafletMap } from 'leaflet';
-import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import type { LeafletMouseEvent, Map as LeafletMap, Circle as LeafletCircle } from 'leaflet';
 
 const defaultCenter: [number, number] = [31.7917, -7.0926];
 
-function MapEvents({ onSelect }: { onSelect: (latitude: number, longitude: number) => void }) {
-  useMapEvents({
-    click(event: LeafletMouseEvent) {
-      onSelect(event.latlng.lat, event.latlng.lng);
-    },
-  });
-
-  return null;
-}
-
-function MapUpdater({ latitude, longitude }: { latitude: number | null; longitude: number | null }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (latitude == null || longitude == null) {
-      return;
-    }
-
-    map.setView([latitude, longitude], 15, { animate: true });
-  }, [latitude, longitude, map]);
-
-  return null;
-}
+// We implement the Leaflet map manually to ensure a single definitive
+// initialization and a clean teardown with `map.remove()` on unmount.
+// This avoids the common "Map container is already initialized" error
+// that appears in dev (StrictMode / HMR) when the container is reused.
 
 export function LocationMap({
   latitude,
@@ -42,38 +23,81 @@ export function LocationMap({
 }) {
   const hasLocation = latitude != null && longitude != null;
   const center: [number, number] = hasLocation ? [latitude, longitude] : defaultCenter;
-  // Keep a ref to the Leaflet map and remove it on unmount to avoid leftover
-  // initialized maps (common in React StrictMode / HMR in dev).
-  const mapRef = useRef<LeafletMap | null>(null);
 
-  // Add a key tied to the center so React remounts the MapContainer when center changes.
-  // This helps ensure the map matches the requested center.
-  return (
-    <MapContainer
-      key={hasLocation ? `${center[0]}_${center[1]}` : 'default-map'}
-      center={center}
-      zoom={hasLocation ? 15 : 5}
-      scrollWheelZoom
-      whenCreated={(map) => {
-        mapRef.current = map;
-      }}
-      className="h-72 w-full rounded-[1.5rem]"
-    >
-      <TileLayer
-        attribution="&copy; OpenStreetMap contributors"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {hasLocation ? (
-        <CircleMarker
-          center={center}
-          radius={10}
-          pathOptions={{ color: '#365314', fillColor: '#84cc16', fillOpacity: 0.7 }}
-        />
-      ) : null}
-      <MapEvents onSelect={onSelect} />
-      <MapUpdater latitude={latitude} longitude={longitude} />
-    </MapContainer>
-  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markerRef = useRef<LeafletCircle | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    // If a previous map exists, remove it before creating a new one.
+    if (mapRef.current) {
+      try {
+        mapRef.current.remove();
+      } catch {}
+      mapRef.current = null;
+    }
+
+    const map = L.map(el, { center, zoom: hasLocation ? 15 : 5, scrollWheelZoom: true });
+    mapRef.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    if (hasLocation) {
+      markerRef.current = L.circleMarker(center, {
+        radius: 10,
+        color: '#365314',
+        fillColor: '#84cc16',
+        fillOpacity: 0.7,
+      }).addTo(map);
+    }
+
+    const handleClick = (e: LeafletMouseEvent) => onSelect(e.latlng.lat, e.latlng.lng);
+    map.on('click', handleClick);
+
+    return () => {
+      map.off('click', handleClick);
+      try {
+        map.remove();
+      } catch {}
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+  // Recreate map only when the container element reference changes; center/marker updates
+  // are handled in a separate effect below to avoid remount churn.
+  }, [containerRef.current]);
+
+  // Update marker and view when latitude/longitude change without recreating the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (hasLocation) {
+      map.setView(center, 15, { animate: true });
+      if (markerRef.current) {
+        markerRef.current.setLatLng(center);
+      } else {
+        markerRef.current = L.circleMarker(center, {
+          radius: 10,
+          color: '#365314',
+          fillColor: '#84cc16',
+          fillOpacity: 0.7,
+        }).addTo(map);
+      }
+    } else {
+      map.setView(defaultCenter, 5, { animate: true });
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+    }
+  }, [latitude, longitude]);
+
+  return <div ref={containerRef} className="h-72 w-full rounded-[1.5rem]" />;
 }
 
 // Ensure we clean up the Leaflet instance if this module is hot-reloaded or
