@@ -43,8 +43,17 @@ export function LocationMap({
   const hasLocation = latitude != null && longitude != null;
   const center: [number, number] = hasLocation ? [latitude, longitude] : defaultCenter;
 
+  // Add a key tied to the center so React remounts the MapContainer when center changes.
+  // This prevents Leaflet's "Map container is already initialized" error when the
+  // same DOM node is reused across renders.
   return (
-    <MapContainer center={center} zoom={hasLocation ? 15 : 5} scrollWheelZoom className="h-72 w-full rounded-[1.5rem]">
+    <MapContainer
+      key={hasLocation ? `${center[0]}_${center[1]}` : 'default-map'}
+      center={center}
+      zoom={hasLocation ? 15 : 5}
+      scrollWheelZoom
+      className="h-72 w-full rounded-[1.5rem]"
+    >
       <TileLayer
         attribution="&copy; OpenStreetMap contributors"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
