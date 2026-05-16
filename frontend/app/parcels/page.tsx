@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { GoogleLocationPicker } from '@/components/fields/google-location-picker';
@@ -254,10 +255,13 @@ function ParcelsContent({ focusParcelId }: { focusParcelId?: string }) {
   );
 }
 
-export default function ParcelsPage({ searchParams }: { searchParams?: { focus?: string } }) {
+export default function ParcelsPage() {
+  const searchParams = useSearchParams();
+  const focus = searchParams?.get('focus') ?? undefined;
+
   return (
     <ProtectedRoute>
-      <ParcelsContent focusParcelId={searchParams?.focus} />
+      <ParcelsContent focusParcelId={focus} />
     </ProtectedRoute>
   );
 }
