@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 import L from 'leaflet';
-import type { LeafletMouseEvent, Map as LeafletMap, Circle as LeafletCircle } from 'leaflet';
+import type { LeafletMouseEvent, Map as LeafletMap, CircleMarker as LeafletCircleMarker } from 'leaflet';
 
 const defaultCenter: [number, number] = [31.7917, -7.0926];
 
@@ -26,7 +26,7 @@ export function LocationMap({
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
-  const markerRef = useRef<LeafletCircle | null>(null);
+  const markerRef = useRef<LeafletCircleMarker | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
