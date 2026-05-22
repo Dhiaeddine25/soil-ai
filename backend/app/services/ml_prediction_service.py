@@ -15,6 +15,14 @@ from uuid import uuid4
 import numpy as np
 from PIL import Image, ImageOps
 
+# Must run before importing TensorFlow so runtime options are respected.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
+os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+
 # ── TensorFlow/Keras primed once at module import time ───────────────────────
 # A full TF import + backend initialization takes ~1–3 s on first use.
 # Importing here shifts that cost to process start-up (FastAPI / uvicorn)
@@ -27,6 +35,14 @@ try:
         efficientnet_v2 as _effnet_mod,
         mobilenet_v2 as _mobnet_mod,
     )
+    tf.get_logger().setLevel("ERROR")
+    try:
+        from absl import logging as _absl_logging
+
+        _absl_logging.set_verbosity(_absl_logging.ERROR)
+        _absl_logging.set_stderrthreshold("error")
+    except Exception:
+        pass
     _TF_AVAILABLE = True
 except Exception:  # pragma: no cover – TF not installed in test env
     _TF_AVAILABLE = False

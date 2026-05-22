@@ -4,6 +4,14 @@ import logging
 import os
 import time
 
+# Set TensorFlow process env before importing services that import TF.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
+os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,20 +38,6 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
                 status_code=504,
                 media_type="application/json"
             )
-
-# ── TensorFlow CPU threading hint (must be set before any TF import) ──────────
-# On CPUs with many cores TF can spawn >50 threads, thrashing the GIL and
-# killing throughput.  Setting OMP_NUM_THREADS=1 here caps the thread-pool
-# to a safe level for a multi-request ASGI server.
-#
-# Users can override this in the environment if needed:
-#   export OMP_NUM_THREADS=4  (for a 4-core server)
-os.environ.setdefault("OMP_NUM_THREADS", "1")
-os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
-os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
-
-# Set intra-op parallelism for intra-layer parallelism
-os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")  # Disable oneDNN for more predictable behavior
 
 # Configuration du logging
 logging.basicConfig(
@@ -119,19 +113,28 @@ def on_startup() -> None:
     reset_global_models()
     logger.info("[Startup] reset_global_models done  %.3fs", time.monotonic() - t_start)
 
-    try:
-        t_load = time.monotonic()
-        models = get_global_models(settings)
-        model_summary = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
-        model_total  = sum(len(v) for k, v in models.items() if k != "_elapsed_s")
+    preload_models = os.environ.get("PRELOAD_MODELS_ON_STARTUP", "0").lower() in {
+        "1", "true", "yes", "on"
+    }
+    if preload_models:
+        try:
+            t_load = time.monotonic()
+            models = get_global_models(settings)
+            model_summary = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
+            model_total  = sum(len(v) for k, v in models.items() if k != "_elapsed_s")
+            logger.info(
+                "[Startup] Modèles préchargés (%d modèles)  labels=%s  elapsed=%.3fs",
+                model_total, model_summary, time.monotonic() - t_load,
+            )
+        except Exception as exc:
+            logger.warning(
+                "[Startup] Échec préchargement modèles (prévisible si aucun entraîné) : %s",
+                exc,
+            )
+    else:
         logger.info(
-            "[Startup] Modèles préchargés (%d modèles)  labels=%s  elapsed=%.3fs",
-            model_total, model_summary, time.monotonic() - t_load,
-        )
-    except Exception as exc:
-        logger.warning(
-            "[Startup] Échec préchargement modèles (prévisible si aucun entraîné) : %s",
-            exc,
+            "[Startup] Preload modèles désactivé (PRELOAD_MODELS_ON_STARTUP=0) ; "
+            "chargement à la demande."
         )
 
     init_db()
