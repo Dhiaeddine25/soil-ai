@@ -51,7 +51,7 @@ except Exception:  # pragma: no cover – TF not installed in test env
 
 from app.core.config import Settings
 from app.schemas.agronomic_advice import AgronomicAdvice
-from app.schemas.prediction import NutrientPrediction
+from app.schemas.prediction import ImageQualityMetadata, NutrientPrediction
 from app.schemas.prediction_quality import ConfidenceDetails, QualityCheck
 from app.services.agronomic_advice_service import AgronomicAdviceService
 from app.services.image_quality_service import ImageQualityService, PreparedImage
@@ -401,6 +401,9 @@ class MLPredictionService:
         try:
             prepared: PreparedImage = self.image_quality.prepare_for_prediction(image_bytes)
             quality_check = prepared.quality_check
+            image_quality_score = prepared.image_quality_score
+            image_quality_warning = prepared.image_quality_warning
+            image_quality_recommendations = prepared.image_quality_recommendations
             logger.info("[ML] QUALITY CHECK OK valid=%s width=%d height=%d brightness=%.2f contrast=%.2f sharpness=%.2f issues=%s %.3fs",
                         quality_check.valid, quality_check.width, quality_check.height,
                         quality_check.brightness, quality_check.contrast, quality_check.sharpness,
@@ -415,17 +418,8 @@ class MLPredictionService:
             refusal = self._refusal_first_pass(quality_check)
             if refusal["refused"]:
                 logger.warning(
-                    "[ML] image refused (pass 1): %s green_dominance=%.3f %.3fs",
-                    refusal["reason"], refusal.get("green_dominance", 0.0), time.monotonic() - t_total,
-                )
-                return self._build_refusal_payload(
-                    analysis_id=analysis_id,
-                    image_name=image_name,
-                    image_path=image_path,
-                    user_id=user_id,
-                    parcel_id=parcel_id,
-                    quality_check=quality_check,
-                    reason=refusal["reason"],
+                    "[ML] quality gate flagged image (pass 1) but inference will continue: %s",
+                    refusal["reason"],
                 )
             logger.debug("[ML] refusal pass-1 %.3fs", time.monotonic() - t0)
         except Exception:
@@ -456,6 +450,7 @@ class MLPredictionService:
 
         # ── 5. Predict probabilities (uses cached pixels from refusal pass 1) ─
         t0 = time.monotonic()
+        print("PIPELINE STEP: MODEL")
         logger.info("[ML] PREDICTION START models=%d", sum(len(v) for v in models.values() if v))
         try:
             if prepared.image_224 is None:
@@ -480,16 +475,7 @@ class MLPredictionService:
             prediction, selected_scores = self._select_prediction(models, probabilities)
             logger.info("[ML] SELECTED SCORES %s", selected_scores)
             if any(score < 0 for score in selected_scores.values()):
-                logger.warning("[ML] prediction below learned thresholds; refusing: %s", selected_scores)
-                return self._build_refusal_payload(
-                    analysis_id=analysis_id,
-                    image_name=image_name,
-                    image_path=image_path,
-                    user_id=user_id,
-                    parcel_id=parcel_id,
-                    quality_check=quality_check,
-                    reason="confiance_trop_faible",
-                )
+                logger.warning("[ML] prediction below learned thresholds; keeping real model outputs: %s", selected_scores)
         except Exception:
             logger.exception("[ML] _select_prediction FAILED")
             raise
@@ -508,17 +494,8 @@ class MLPredictionService:
             refusal2 = self._refusal_second_pass(quality_check, confidence_details)
             if refusal2["refused"]:
                 logger.warning(
-                    "[ML] image refused (pass 2): %s max_prob=%.3f margin=%.3f %.3fs",
+                    "[ML] quality gate flagged image (pass 2) but inference will continue: %s max_prob=%.3f margin=%.3f %.3fs",
                     refusal2["reason"], confidence_details.max_prob, confidence_details.margin, time.monotonic() - t_total,
-                )
-                return self._build_refusal_payload(
-                    analysis_id=analysis_id,
-                    image_name=image_name,
-                    image_path=image_path,
-                    user_id=user_id,
-                    parcel_id=parcel_id,
-                    quality_check=quality_check,
-                    reason=refusal2["reason"],
                 )
         except Exception:
             logger.exception("[ML] refusal pass-2 FAILED")
@@ -572,7 +549,16 @@ class MLPredictionService:
             recommendation_message = "Voir les résultats"
             warning_message        = ""
 
+        quality_warning = image_quality_warning or None
+        if quality_warning == 'low_image_quality':
+            warning_message = (
+                "Qualité d'image faible: " + ", ".join(quality_check.issues or ["metriques visuelles faibles"])
+            )
+        elif quality_warning is None and not warning_message:
+            warning_message = ""
+
         elapsed_total = time.monotonic() - t_total
+        print("PIPELINE STEP: RESPONSE")
         logger.info(
             "[ML] predict_npk done  elapsed=%.3fs  status=%s  score=%s  confidence=%.4f",
             elapsed_total, status, score, confidence,
@@ -581,6 +567,7 @@ class MLPredictionService:
         return {
             "analysis_id":          analysis_id,
             "model_name":           _model_name_from_cache(models),
+            "npk_prediction":       NutrientPrediction(**prediction),
             "prediction":           prediction,
             "nitrogen":             self._nutrient_detail("N", prediction["N_level"], probabilities, calibration_results.get("N")),
             "phosphorus":           self._nutrient_detail("P", prediction["P_level"], probabilities, calibration_results.get("P")),
@@ -597,6 +584,14 @@ class MLPredictionService:
             "field_disclaimer":     field_disclaimer,
             "warning_message":      warning_message,
             "recommendation_message": recommendation_message,
+            "warning":              quality_warning,
+            "recommendations":      image_quality_recommendations,
+            "image_quality_score":   image_quality_score,
+            "image_quality":        ImageQualityMetadata(
+                image_quality_score=image_quality_score,
+                warning=quality_warning,
+                recommendations=image_quality_recommendations,
+            ),
             "is_mock":              False,
             "timestamp":            datetime.now(timezone.utc),
             "source":               f"uploaded_image:{user_id}" if user_id else "uploaded_image",
@@ -622,12 +617,11 @@ class MLPredictionService:
     def _refusal_first_pass(
         self, quality_check: QualityCheck,
     ) -> dict[str, object]:
-        """Fast image-quality gate – refuse ONLY if image is invalid (blurry, too dark, etc.)."""
+        """Compatibility helper that now only reports quality advisories."""
         if not quality_check.valid:
             logger.info("[Refusal] First pass: quality invalid, issues=%s", quality_check.issues)
-            return {"refused": True, "reason": "image_non_exploitable"}
+            return {"refused": False, "reason": "image_non_exploitable"}
 
-        # Accept all valid images - no green dominance check
         logger.info("[Refusal] First pass: quality valid, accepting")
         return {"refused": False, "reason": None}
 
@@ -636,26 +630,10 @@ class MLPredictionService:
         quality_check:     QualityCheck,
         confidence_details: ConfidenceDetails | None = None,
     ) -> dict[str, object]:
-        """Second-pass gate using ONLY confidence thresholds – no green dominance check.
-        
-        Refuse ONLY if prediction confidence is extremely low (quasi-random).
-        """
+        """Compatibility helper that now only reports confidence advisories."""
         if confidence_details is None:
             return {"refused": False, "reason": None}
-        
-        # Refuse only if confidence is extremely low
-        if confidence_details.max_prob < self.settings.refusal_min_confidence:
-            logger.info("[Refusal] Second pass: max_prob=%.3f < %.3f (refusing)",
-                       confidence_details.max_prob, self.settings.refusal_min_confidence)
-            return {"refused": True, "reason": "confiance_trop_faible"}
-        
-        if confidence_details.margin < self.settings.refusal_min_margin:
-            logger.info("[Refusal] Second pass: margin=%.3f < %.3f (refusing)",
-                       confidence_details.margin, self.settings.refusal_min_margin)
-            return {"refused": True, "reason": "confiance_trop_faible"}
-        
-        # Accept all other predictions (including those with green pixels, low contrast, etc.)
-        logger.info("[Refusal] Second pass: confidence OK (max_prob=%.3f, margin=%.3f), accepting",
+        logger.info("[Refusal] Second pass: confidence advisories only (max_prob=%.3f, margin=%.3f)",
                    confidence_details.max_prob, confidence_details.margin)
         return {"refused": False, "reason": None}
 
@@ -666,29 +644,19 @@ class MLPredictionService:
         quality_check:     QualityCheck,
         confidence_details: ConfidenceDetails | None = None,
     ) -> dict[str, object]:
-        """Backward-compatible single-call refusal detector.
-        
-        Refuse ONLY if:
-        1. Image quality is invalid (blurry, too dark, etc.)
-        2. Confidence is extremely low (quasi-random prediction)
+        """Backward-compatible single-call refusal detector kept for callers.
+
+        It now reports advisories only and never blocks inference for valid images.
         """
         # Quality check
         if not quality_check.valid:
             logger.info("[Refusal] Image invalid: %s", quality_check.issues)
-            return {"refused": True, "reason": "image_non_exploitable"}
+            return {"refused": False, "reason": "image_non_exploitable"}
         
-        # Confidence check
         if confidence_details:
-            if confidence_details.max_prob < self.settings.refusal_min_confidence:
-                logger.info("[Refusal] Low confidence: max_prob=%.3f < %.3f",
-                           confidence_details.max_prob, self.settings.refusal_min_confidence)
-                return {"refused": True, "reason": "confiance_trop_faible"}
-            if confidence_details.margin < self.settings.refusal_min_margin:
-                logger.info("[Refusal] Low margin: margin=%.3f < %.3f",
-                           confidence_details.margin, self.settings.refusal_min_margin)
-                return {"refused": True, "reason": "confiance_trop_faible"}
-        
-        # Accept all other cases
+            logger.info("[Refusal] Confidence advisories only: max_prob=%.3f margin=%.3f",
+                       confidence_details.max_prob, confidence_details.margin)
+
         logger.info("[Refusal] No refusal reasons, accepting image")
         return {"refused": False, "reason": None}
 
@@ -1065,38 +1033,44 @@ class MLPredictionService:
         quality_check:  QualityCheck,
         reason:         str,
     ) -> dict:
-        prediction = {"K_level": "K0", "N_level": "N0", "P_level": "P0"}
-        agronomic_advice         = self.advice.build(NutrientPrediction(**prediction))
-        confidence_details       = ConfidenceDetails(max_prob=0.0, second_prob=0.0, margin=0.0, top_label=None, top_group=None)  # type: ignore[call-arg]
         return {
             "analysis_id":           analysis_id,
             "model_name":            "SoilAI ML Ensemble",
-            "prediction":            NutrientPrediction(**prediction),
+            "npk_prediction":        None,
+            "prediction":            None,
             "nitrogen":              None,
             "phosphorus":            None,
             "potassium":             None,
-            "confidence":            0.0,
+            "confidence":            None,
             "status":                "image_non_exploitable",
             "can_trust_result":      False,
             "quality_check":         quality_check,
-            "confidence_details":    confidence_details,
-            "interpretation":        "L'image ne permet pas une lecture NPK fiable.",
+            "confidence_details":    None,
+            "interpretation":        "Impossible de produire une lecture NPK fiable pour cette image.",
             "recommendation":        "Reprendre une photo plus nette, bien éclairée et centrée sur le sol.",
-            "agronomic_advice":      agronomic_advice,
-            "field_advice":          "Impossible de fournir un conseil fiable avec cette image.",
+            "agronomic_advice":      None,
+            "field_advice":          None,
             "field_disclaimer":      self.advice.field_disclaimer(),
-            "soil_health_score":     0.0,
+            "soil_health_score":     None,
             "uncertainty_metrics":   {},
             "debug":                 None,
-            "score_breakdown":       {"max_mean": 0.0, "uncertainty_penalty": 0.0, "formula": "((K_max + N_max + P_max) / 3) * 100 - (uncertainty_penalty * 10)"},
+            "score_breakdown":       {},
             "warning_message":       "Cette image ne permet pas une estimation fiable du sol.",
             "recommendation_message":"Reprendre une photo plus nette, bien éclairée et centrée sur le sol.",
+            "warning":               "low_image_quality",
+            "recommendations":       ["Reprendre une photo plus nette, bien éclairée et centrée sur le sol."],
+            "image_quality_score":   0.0,
+            "image_quality":         ImageQualityMetadata(
+                image_quality_score=0.0,
+                warning="low_image_quality",
+                recommendations=["Reprendre une photo plus nette, bien éclairée et centrée sur le sol."],
+            ),
             "is_mock":               False,
             "timestamp":             datetime.now(timezone.utc),
             "source":                (f"uploaded_image:{user_id}" if user_id else "uploaded_image"),
             "model_status":          "model_ready",
-            "probabilities":         {label: 0.0 for label in LABELS},
-            "score":                 0,
+            "probabilities":         {},
+            "score":                 None,
             "refused":               True,
             "refusal_reason":        reason,
             "image_name":            image_name,

@@ -19,16 +19,21 @@ export interface ResultsSummaryResponse {
 export interface PredictionResponse {
   analysis_id?: string | null;
   model_name: string;
+  npk_prediction?: {
+    K_level: 'K0' | 'K1' | 'K2';
+    N_level: 'N0' | 'N1' | 'N2';
+    P_level: 'P0' | 'P1';
+  } | null;
   prediction?: {
     K_level: 'K0' | 'K1' | 'K2';
     N_level: 'N0' | 'N1' | 'N2';
     P_level: 'P0' | 'P1';
   } | null;
-  confidence: number;
+  confidence?: number | null;
   status: 'image_non_exploitable' | 'prediction_incertaine' | 'confirmation_recommandee' | 'ok';
   can_trust_result: boolean;
   quality_check: QualityCheck;
-  confidence_details: ConfidenceDetails;
+  confidence_details?: ConfidenceDetails | null;
   interpretation: string;
   recommendation: string;
   agronomic_advice: AgronomicAdvice;
@@ -38,6 +43,11 @@ export interface PredictionResponse {
   field_advice?: string | null;
   field_disclaimer?: string | null;
   soil_health_score?: number | null;
+  image_quality?: {
+    image_quality_score?: number | null;
+    warning?: 'low_image_quality' | string | null;
+    recommendations?: string[];
+  } | null;
   uncertainty_metrics?: Record<string, Record<string, unknown>>;
   debug?: PredictionDebug | null;
   score_breakdown?: Record<string, unknown> | null;
@@ -48,6 +58,9 @@ export interface PredictionResponse {
   image_url?: string | null;
   warning_message: string;
   recommendation_message: string;
+  warning?: 'low_image_quality' | string | null;
+  recommendations?: string[];
+  image_quality_score?: number | null;
   is_mock: boolean;
   timestamp: string;
   source: string;

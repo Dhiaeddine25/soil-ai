@@ -9,6 +9,7 @@ import { AdviceCard } from '@/components/ui/advice-card';
 import { AgricultureCard } from '@/components/ui/agriculture-card';
 import { ConfidenceIndicator } from '@/components/ui/confidence-indicator';
 import { NutrientCard } from '@/components/ui/nutrient-card';
+import { QualityWarningCard } from '@/components/ui/quality-warning-card';
 import { SoilStatusCard } from '@/components/ui/soil-status-card';
 
 interface MobileAnalysisResultProps {
@@ -29,7 +30,7 @@ export function MobileAnalysisResult({
   const agronomicAdvice = result.agronomic_advice;
   const soilInsight = getSoilScore(result);
   const status = result.status ?? 'ok';
-  const isRejected = status === 'image_non_exploitable';
+  const prediction = result.prediction ?? result.npk_prediction ?? null;
 
   const getProbability = (probabilities: Record<string, number>, label: string) => {
     return probabilities[label] ?? 0;
@@ -42,56 +43,6 @@ export function MobileAnalysisResult({
     const probability = getProbability(result.probabilities ?? {}, label);
     return Math.round(probability * 100) || confidence;
   };
-
-  if (isRejected) {
-    return (
-      <Card className="space-y-6">
-        <div className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
-              <svg className="h-6 w-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.956c1.54 0 2.502-1.667 1.732-3L13.732 9c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-soil-900 text-center">
-            Photo non exploitable
-          </h3>
-          <p className="text-sm text-soil-600 text-center">
-            Cette image ne permet pas une estimation fiable du sol.
-          </p>
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-soil-700">
-              Conseils :
-            </div>
-            <ul className="list-disc list-inside text-sm text-soil-600 space-y-1">
-              <li>Reprendre la photo</li>
-              <li>Améliorer la lumière</li>
-              <li>Rapprocher le sol</li>
-              <li>Éviter les ombres</li>
-              <li>Éviter les objets parasites</li>
-            </ul>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={onReset}
-              variant="secondary"
-              className="flex-1"
-            >
-              Reprendre l'image
-            </Button>
-            <Button
-              onClick={() => {/* Handle retake */}}
-              variant="ghost"
-              className="flex-1"
-            >
-              Choisir une autre image
-            </Button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
 
   return (
     <Card className="space-y-6">
@@ -135,6 +86,8 @@ export function MobileAnalysisResult({
 
       {/* Main content */}
       <div className="space-y-5">
+        <QualityWarningCard result={result} />
+
         {/* Status and confidence */}
         <div className="flex items-center justify-between px-3 py-2 bg-leaf-50 rounded-xl">
           <div className="flex items-center space-x-2">
@@ -164,7 +117,7 @@ export function MobileAnalysisResult({
               Résultat
             </div>
             <span className={`rounded-full bg-soil-100 px-3 py-1 text-xs font-semibold text-soil-700`}>
-              {result.prediction?.K_level ?? 'K0'} / {result.prediction?.N_level ?? 'N0'} / {result.prediction?.P_level ?? 'P0'}
+                {prediction?.K_level ?? 'K0'} / {prediction?.N_level ?? 'N0'} / {prediction?.P_level ?? 'P0'}
             </span>
           </div>
           <div className="text-2xl font-semibold text-soil-900">
@@ -197,7 +150,7 @@ export function MobileAnalysisResult({
               key={item.label}
               name={item.label}
               level={/* TODO: implement getNutrientLevelLabel */ ''}
-              confidence={nutrientConfidence(result.prediction?.[`${item.key}_level` as 'K_level' | 'N_level' | 'P_level'])}
+              confidence={nutrientConfidence(prediction?.[`${item.key}_level` as 'K_level' | 'N_level' | 'P_level'])}
               advice={item.advice?.advice ?? item.fallback}
               status={item.advice?.soil_status}
             />

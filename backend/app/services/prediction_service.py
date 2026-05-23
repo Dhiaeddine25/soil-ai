@@ -32,6 +32,7 @@ class PredictionService:
         """Run prediction in a thread pool; time each sub-phase individually."""
         t_start     = time.monotonic()
         request_ms  = time.monotonic()
+        print("PIPELINE STEP: SERVICE")
 
         image_bytes = await image.read()
         logger.info(
@@ -85,6 +86,8 @@ class PredictionService:
         except Exception as exc:
             logger.error("[Predict] pydantic_validation FAILED: %s\npayload=%s", exc, payload)
             raise
+
+        print("PIPELINE STEP: RESPONSE")
 
         # ── DB persist (run in threadpool to avoid blocking async loop) ─────
         def _persist_history():

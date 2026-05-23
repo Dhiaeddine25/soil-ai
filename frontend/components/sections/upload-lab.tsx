@@ -12,6 +12,7 @@ import { AgricultureCard } from '@/components/ui/agriculture-card';
 import { ConfidenceIndicator } from '@/components/ui/confidence-indicator';
 import { NutrientCard } from '@/components/ui/nutrient-card';
 import DebugPanel from '@/components/ui/debug-panel';
+import { QualityWarningCard } from '@/components/ui/quality-warning-card';
 import { RefusalCard } from '@/components/ui/refusal-card';
 import { SoilStatusCard } from '@/components/ui/soil-status-card';
 import { useI18n } from '@/components/i18n/i18n-provider';
@@ -42,6 +43,7 @@ export function UploadLab({ initialParcelId }: { initialParcelId?: string }) {
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   const status = result?.status ?? 'ok';
   const isRejected = status === 'image_non_exploitable';
+  const prediction = result?.prediction ?? result?.npk_prediction ?? null;
 
   useEffect(() => {
     const loadParcels = async () => {
@@ -206,8 +208,10 @@ export function UploadLab({ initialParcelId }: { initialParcelId?: string }) {
             />
           ) : null}
 
-          {!isRejected && result ? (
+          {result ? (
             <div className="space-y-6">
+              <QualityWarningCard result={result} />
+
               <AgricultureCard className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="text-sm uppercase tracking-[0.2em] text-soil-500">{messages.analysis.result}</div>
@@ -239,8 +243,8 @@ export function UploadLab({ initialParcelId }: { initialParcelId?: string }) {
                   <NutrientCard
                     key={item.label}
                     name={item.label}
-                    level={getNutrientLevelLabel(result?.prediction?.[`${item.key}_level` as 'K_level' | 'N_level' | 'P_level'])}
-                    confidence={nutrientConfidence(result?.prediction?.[`${item.key}_level` as 'K_level' | 'N_level' | 'P_level'])}
+                    level={getNutrientLevelLabel(prediction?.[`${item.key}_level` as 'K_level' | 'N_level' | 'P_level'])}
+                    confidence={nutrientConfidence(prediction?.[`${item.key}_level` as 'K_level' | 'N_level' | 'P_level'])}
                     advice={item.advice?.advice ?? item.fallback}
                     status={item.advice?.soil_status}
                   />

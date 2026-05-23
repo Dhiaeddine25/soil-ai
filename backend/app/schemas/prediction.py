@@ -35,24 +35,32 @@ class NutrientPredictionDetail(BaseModel):
     softened: bool | None = None
 
 
+class ImageQualityMetadata(BaseModel):
+    image_quality_score: float | None = None
+    warning: str | None = None
+    recommendations: list[str] = Field(default_factory=list)
+
+
 class PredictionResponse(BaseModel):
     analysis_id: str | None = None
     model_name: str
+    npk_prediction: NutrientPrediction | None = None
     prediction: NutrientPrediction | None = None
     nitrogen: NutrientPredictionDetail | None = None
     phosphorus: NutrientPredictionDetail | None = None
     potassium: NutrientPredictionDetail | None = None
-    confidence: float = Field(ge=0.0, le=1.0)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     status: PredictionStatus
     can_trust_result: bool
     quality_check: QualityCheck
-    confidence_details: ConfidenceDetails
+    confidence_details: ConfidenceDetails | None
     interpretation: str
     recommendation: str
     agronomic_advice: AgronomicAdvice | None = None
     field_advice: str | None = None
     field_disclaimer: str | None = None
     soil_health_score: float | None = None
+    image_quality: ImageQualityMetadata | None = None
     uncertainty_metrics: dict[str, dict[str, object]] = Field(default_factory=dict)
     debug: dict[str, object] | None = None
     score_breakdown: dict[str, object] | None = None
@@ -63,6 +71,9 @@ class PredictionResponse(BaseModel):
     image_url: str | None = None
     warning_message: str
     recommendation_message: str
+    warning: str | None = None
+    recommendations: list[str] = Field(default_factory=list)
+    image_quality_score: float | None = None
     is_mock: bool
     timestamp: datetime
     source: str

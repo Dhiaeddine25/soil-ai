@@ -15,6 +15,7 @@ import { SmartAdviceCard } from '@/components/ui/smart-advice-card';
 import { SoilHealthCard } from '@/components/ui/soil-health-card';
 import DebugPanel from '@/components/ui/debug-panel';
 import ComparisonCard from '@/components/ui/comparison-card';
+import { QualityWarningCard } from '@/components/ui/quality-warning-card';
 import { downloadHistoryCsv, downloadHistoryPdf, getHistory, getHistoryEntry } from '@/lib/api';
 import { API_BASE } from '@/lib/api';
 import type { HistoryEntry } from '@/lib/types';
@@ -91,6 +92,7 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
   }, [entry, loading, token, user]);
 
   const prediction = entry?.prediction ?? null;
+  const npkPrediction = prediction?.prediction ?? prediction?.npk_prediction ?? null;
   const exportParcelId = entry?.parcel_id ?? undefined;
 
   const sourceLabel = useMemo(() => entry?.image_name ?? prediction?.source ?? 'Image non renseignee', [entry, prediction]);
@@ -273,24 +275,26 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
         ) : (
           <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-6">
+              {prediction ? <QualityWarningCard result={prediction} /> : null}
+
               <SoilHealthCard status={globalSoil.status} score={globalSoil.score} summary={globalSoil.summary} />
               <div className="grid gap-4 md:grid-cols-3">
                 <NutrientStatusCard
                   label="Azote"
-                  level={getNutrientLevelLabel(prediction?.prediction?.N_level)}
-                  confidence={nutrientConfidence(prediction?.prediction?.N_level)}
+                  level={getNutrientLevelLabel(npkPrediction?.N_level)}
+                  confidence={nutrientConfidence(npkPrediction?.N_level)}
                   note={agronomicAdvice?.nitrogen.advice ?? 'Surveiller le niveau d azote.'}
                 />
                 <NutrientStatusCard
                   label="Phosphore"
-                  level={getNutrientLevelLabel(prediction?.prediction?.P_level)}
-                  confidence={nutrientConfidence(prediction?.prediction?.P_level)}
+                  level={getNutrientLevelLabel(npkPrediction?.P_level)}
+                  confidence={nutrientConfidence(npkPrediction?.P_level)}
                   note={agronomicAdvice?.phosphorus.advice ?? 'Surveiller le niveau de phosphore.'}
                 />
                 <NutrientStatusCard
                   label="Potassium"
-                  level={getNutrientLevelLabel(prediction?.prediction?.K_level)}
-                  confidence={nutrientConfidence(prediction?.prediction?.K_level)}
+                  level={getNutrientLevelLabel(npkPrediction?.K_level)}
+                  confidence={nutrientConfidence(npkPrediction?.K_level)}
                   note={agronomicAdvice?.potassium.advice ?? 'Surveiller le niveau de potassium.'}
                 />
               </div>

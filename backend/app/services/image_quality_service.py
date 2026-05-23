@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 
 import logging
@@ -24,14 +24,59 @@ class ImageQualityMetrics:
 
 
 @dataclass(frozen=True)
+class ImageQualitySummary:
+    score: float
+    warning: str | None
+    recommendations: list[str]
+
+
+@dataclass(frozen=True)
 class PreparedImage:
     quality_check: QualityCheck
     image_224: np.ndarray | None = None
+    image_quality_score: float | None = None
+    image_quality_warning: str | None = None
+    image_quality_recommendations: list[str] = field(default_factory=list)
 
 
 class ImageQualityService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+
+    def _summarize_quality(self, metrics: ImageQualityMetrics, issues: list[str]) -> ImageQualitySummary:
+        brightness_score = max(0.0, 1.0 - abs(metrics.brightness - 128.0) / 128.0)
+        contrast_score = min(metrics.contrast / 35.0, 1.0)
+        sharpness_score = min(metrics.sharpness / 25.0, 1.0)
+        size_score = min(min(metrics.width, metrics.height) / 512.0, 1.0)
+
+        base_score = (
+            (0.30 * brightness_score)
+            + (0.25 * contrast_score)
+            + (0.35 * sharpness_score)
+            + (0.10 * size_score)
+        ) * 100.0
+
+        penalty = min(len(issues) * 4.0, 20.0)
+        score = round(max(base_score - penalty, 0.0), 2)
+        recommendations = self._quality_recommendations(issues)
+        warning = 'low_image_quality' if issues or score < 50.0 else None
+        return ImageQualitySummary(score=score, warning=warning, recommendations=recommendations)
+
+    def _quality_recommendations(self, issues: list[str]) -> list[str]:
+        recommendations: list[str] = []
+        if 'too_dark' in issues:
+            recommendations.append('Éclairer davantage la scène pour révéler la texture du sol.')
+        if 'too_bright' in issues:
+            recommendations.append('Réduire l’exposition pour éviter une image surexposée.')
+        if 'low_contrast' in issues:
+            recommendations.append('Améliorer le contraste avec une lumière plus homogène.')
+        if 'blurry' in issues:
+            recommendations.append('Stabiliser le téléphone et refaire une prise plus nette.')
+        if 'image_too_small' in issues:
+            recommendations.append('Se rapprocher du sol ou utiliser une résolution plus élevée.')
+        if not recommendations:
+            recommendations.append('La qualité de l’image est suffisante pour lancer la prédiction.')
+        return recommendations
 
     def analyze(self, image_bytes: bytes | None) -> QualityCheck:
         return self.prepare_for_prediction(image_bytes).quality_check
@@ -52,19 +97,6 @@ class ImageQualityService:
                 logger.info("[Quality] IMAGE SIZE: width=%d, height=%d", image.size[0], image.size[1])
                 logger.info("[Quality] IMAGE MODE: %s", image.mode)
                 width, height = image.size
-                if width < self.settings.quality_min_width or height < self.settings.quality_min_height:
-                    logger.info("[Quality] IMAGE TOO SMALL: width=%d < %d or height=%d < %d", 
-                              width, self.settings.quality_min_width, height, self.settings.quality_min_height)
-                    return PreparedImage(
-                        quality_check=QualityCheck(
-                            valid=False,
-                            status='image_non_exploitable',
-                            width=width,
-                            height=height,
-                            issues=['image_too_small'],
-                        )
-                    )
-
                 metrics = self._measure(image)
                 logger.info("[Quality] BLUR SCORE (sharpness): %.2f", metrics.sharpness)
                 logger.info("[Quality] BRIGHTNESS SCORE: %.2f", metrics.brightness)
@@ -91,17 +123,25 @@ class ImageQualityService:
             issues.append('blurry')
             logger.info("[Quality] BLURRY: sharpness=%.2f < min=20.0", metrics.sharpness)
 
+        if width < self.settings.quality_min_width or height < self.settings.quality_min_height:
+            issues.append('image_too_small')
+            logger.info(
+                "[Quality] IMAGE TOO SMALL: width=%d < %d or height=%d < %d",
+                width, self.settings.quality_min_width, height, self.settings.quality_min_height,
+            )
+
         # Soil presence and bad framing are diagnostics only.
         soil_present = self._detect_soil_presence(image)
         logger.info("[Quality] SOIL PRESENCE: %.2f%% (threshold: 20%%)", soil_present * 100)
         bad_framing = self._detect_bad_framing(image)
         logger.info("[Quality] BAD FRAMING: %.2f%% (threshold: 40%%)", bad_framing * 100)
 
-        valid = not issues
+        valid = True
         logger.info("[Quality] VALIDITY CHECK: valid=%s, issues=%s", valid, issues)
+        summary = self._summarize_quality(metrics, issues)
         quality_check = QualityCheck(
             valid=valid,
-            status='ok' if valid else 'image_non_exploitable',
+            status='ok',
             width=metrics.width,
             height=metrics.height,
             brightness=round(metrics.brightness, 2),
@@ -110,13 +150,13 @@ class ImageQualityService:
             issues=issues,
         )
 
-        if not valid:
-            return PreparedImage(quality_check=quality_check)
-
         image_224 = self._build_input_tensor(image, (224, 224))
         return PreparedImage(
             quality_check=quality_check,
             image_224=image_224,
+            image_quality_score=summary.score,
+            image_quality_warning=summary.warning,
+            image_quality_recommendations=summary.recommendations,
         )
 
     def _build_input_tensor(self, image: Image.Image, size: tuple[int, int]) -> np.ndarray:
