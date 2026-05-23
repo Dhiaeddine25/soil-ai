@@ -32,8 +32,15 @@ export interface PredictionResponse {
   interpretation: string;
   recommendation: string;
   agronomic_advice: AgronomicAdvice;
+  nitrogen?: NutrientPredictionDetail | null;
+  phosphorus?: NutrientPredictionDetail | null;
+  potassium?: NutrientPredictionDetail | null;
   field_advice?: string | null;
   field_disclaimer?: string | null;
+  soil_health_score?: number | null;
+  uncertainty_metrics?: Record<string, Record<string, unknown>>;
+  debug?: PredictionDebug | null;
+  score_breakdown?: Record<string, unknown> | null;
   score?: number | null;
   refused?: boolean;
   refusal_reason?: string | null;
@@ -46,6 +53,38 @@ export interface PredictionResponse {
   source: string;
   model_status: string;
   probabilities: Record<string, number>;
+}
+
+export interface NutrientPredictionDetail {
+  class: string;
+  confidence: number;
+  probabilities: number[];
+  raw_probabilities?: number[] | null;
+  calibrated_probabilities?: number[] | null;
+  interpretation: string;
+  signal_score: number;
+  raw_entropy?: number | null;
+  calibrated_entropy?: number | null;
+  entropy_baseline?: number | null;
+  entropy_ratio?: number | null;
+  calibration_factor?: number | null;
+  uncertainty_adjustment?: number | null;
+  softened?: boolean | null;
+  variance_index?: number | null;
+  uncertainty_score?: number | null;
+}
+
+export interface PredictionDebug {
+  calibration_mode?: string;
+  calibration_factor?: number;
+  temperature_proxy?: number;
+  raw_probabilities?: Record<string, number>;
+  calibrated_probabilities?: Record<string, number>;
+  entropy_before?: Record<string, number>;
+  entropy_after?: Record<string, number>;
+  entropy_baseline?: Record<string, number>;
+  uncertainty_adjustment?: Record<string, number>;
+  models?: Array<Record<string, unknown>>;
 }
 
 export interface QualityCheck {

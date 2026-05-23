@@ -167,7 +167,7 @@ export async function predictImage(
     formData.append('parcel_id', parcelId);
   }
 
-  const TIMEOUT_MS = 300_000; // 5 minutes for heavy ML processing
+  const TIMEOUT_MS = 120_000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

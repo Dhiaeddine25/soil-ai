@@ -16,10 +16,32 @@ class NutrientPrediction(BaseModel):
     P_level: str = Field(alias="P", serialization_alias="P_level")
 
 
+class NutrientPredictionDetail(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    predicted_class: str = Field(alias="class", serialization_alias="class")
+    confidence: float
+    probabilities: list[float]
+    raw_probabilities: list[float] | None = None
+    calibrated_probabilities: list[float] | None = None
+    interpretation: str
+    signal_score: float = Field(ge=0.0, le=1.0)
+    raw_entropy: float | None = None
+    calibrated_entropy: float | None = None
+    entropy_baseline: float | None = None
+    entropy_ratio: float | None = None
+    calibration_factor: float | None = None
+    uncertainty_adjustment: float | None = None
+    softened: bool | None = None
+
+
 class PredictionResponse(BaseModel):
     analysis_id: str | None = None
     model_name: str
     prediction: NutrientPrediction | None = None
+    nitrogen: NutrientPredictionDetail | None = None
+    phosphorus: NutrientPredictionDetail | None = None
+    potassium: NutrientPredictionDetail | None = None
     confidence: float = Field(ge=0.0, le=1.0)
     status: PredictionStatus
     can_trust_result: bool
@@ -30,6 +52,10 @@ class PredictionResponse(BaseModel):
     agronomic_advice: AgronomicAdvice | None = None
     field_advice: str | None = None
     field_disclaimer: str | None = None
+    soil_health_score: float | None = None
+    uncertainty_metrics: dict[str, dict[str, object]] = Field(default_factory=dict)
+    debug: dict[str, object] | None = None
+    score_breakdown: dict[str, object] | None = None
     score: int | None = None
     refused: bool = False
     refusal_reason: str | None = None

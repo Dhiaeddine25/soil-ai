@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -13,6 +14,14 @@ class Settings(BaseModel):
     active_model_family: str = "efficientnetv2l"
     image_size: int = 320
     confidence_floor: float = 0.55
+    debug_predictions: bool = False
+    calibration_gamma: float = 0.82
+    calibration_temperature: float = 2.0
+    calibration_soften_threshold: float = 0.95
+    calibration_soften_strength: float = 0.08
+    calibration_min_second_weight: float = 0.05
+    calibration_entropy_weight: float = 0.35
+    calibration_entropy_fallback: float = 0.55
     # Qualité – seuils très permissifs : accepter presque tout sauf flou extrême / trop sombre
     quality_min_width: int = 32
     quality_min_height: int = 32
@@ -60,4 +69,6 @@ class Settings(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(
+        debug_predictions=os.getenv("NPK_DEBUG_PREDICTIONS", "0").strip().lower() in {"1", "true", "yes", "on"},
+    )

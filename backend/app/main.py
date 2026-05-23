@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+import threading
 
 # Set TensorFlow process env before importing services that import TF.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -113,24 +114,28 @@ def on_startup() -> None:
     reset_global_models()
     logger.info("[Startup] reset_global_models done  %.3fs", time.monotonic() - t_start)
 
-    preload_models = os.environ.get("PRELOAD_MODELS_ON_STARTUP", "0").lower() in {
+    preload_models = os.environ.get("PRELOAD_MODELS_ON_STARTUP", "1").lower() in {
         "1", "true", "yes", "on"
     }
     if preload_models:
-        try:
-            t_load = time.monotonic()
-            models = get_global_models(settings)
-            model_summary = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
-            model_total  = sum(len(v) for k, v in models.items() if k != "_elapsed_s")
-            logger.info(
-                "[Startup] Modèles préchargés (%d modèles)  labels=%s  elapsed=%.3fs",
-                model_total, model_summary, time.monotonic() - t_load,
-            )
-        except Exception as exc:
-            logger.warning(
-                "[Startup] Échec préchargement modèles (prévisible si aucun entraîné) : %s",
-                exc,
-            )
+        def _warm_models() -> None:
+            try:
+                t_load = time.monotonic()
+                models = get_global_models(settings)
+                model_summary = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
+                model_total = sum(len(v) for k, v in models.items() if k != "_elapsed_s")
+                logger.info(
+                    "[Startup] Modèles préchargés (%d modèles)  labels=%s  elapsed=%.3fs",
+                    model_total, model_summary, time.monotonic() - t_load,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "[Startup] Échec préchargement modèles (prévisible si aucun entraîné) : %s",
+                    exc,
+                )
+
+        threading.Thread(target=_warm_models, name="model-warmup", daemon=True).start()
+        logger.info("[Startup] Background model warmup launched")
     else:
         logger.info(
             "[Startup] Preload modèles désactivé (PRELOAD_MODELS_ON_STARTUP=0) ; "

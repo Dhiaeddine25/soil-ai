@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -53,8 +54,9 @@ from app.schemas.agronomic_advice import AgronomicAdvice
 from app.schemas.prediction import NutrientPrediction
 from app.schemas.prediction_quality import ConfidenceDetails, QualityCheck
 from app.services.agronomic_advice_service import AgronomicAdviceService
-from app.services.image_quality_service import ImageQualityService
+from app.services.image_quality_service import ImageQualityService, PreparedImage
 from app.services.prediction_decision_service import PredictionDecisionService
+from app.services.probability_calibration import CalibrationResult, ProbabilityCalibrationService
 
 logger = logging.getLogger(__name__)
 
@@ -71,17 +73,8 @@ ENSEMBLE_FAMILIES = {"efficientnetv2l", "mobilenetv2", "densenet201"}
 # ── TF preprocessing callables resolved once at import ────────────────────────
 
 if _TF_AVAILABLE:
-    _TF_PREPROCESS_FN: dict[str, Callable[[np.ndarray], np.ndarray]] = {
-        "densenet": _densenet_mod.preprocess_input,
-        "densenet201": _densenet_mod.preprocess_input,
-        "densenet_opti": _densenet_mod.preprocess_input,
-        "efficientnetv2l": _effnet_mod.preprocess_input,
-        "mobilenetv2": _mobnet_mod.preprocess_input,
-        "vscode": _mobnet_mod.preprocess_input,
-    }
     _TF_LOAD_FN: dict[str, Callable] = {}  # filled below
 else:
-    _TF_PREPROCESS_FN = {}
     _TF_LOAD_FN = {}
 
 
@@ -97,6 +90,21 @@ for _fam in ("densenet", "densenet201", "densenet_opti",
     _TF_LOAD_FN[_fam] = _tf_load  # all families share the same loader
 
 
+def _identity_preprocess(img: np.ndarray) -> np.ndarray:
+    return img
+
+
+def _extract_probability(raw_output: np.ndarray) -> float:
+    flat = np.asarray(raw_output, dtype=np.float32).ravel()
+    if flat.size == 0:
+        return 0.0
+    if flat.size == 1:
+        return float(flat[0])
+    if flat.size == 2:
+        return float(flat[1])
+    return float(np.max(flat))
+
+
 # ── Global model cache: loaded once at startup, shared across all requests ────
 # Pattern: readers call get_global_models(); the Fn returns the cached dict
 # immediately (no disk I/O after the first warm call).
@@ -104,6 +112,9 @@ for _fam in ("densenet", "densenet201", "densenet_opti",
 # re-scans disk (handy in dev when retraining a model).
 
 _GLOBAL_MODELS: dict[str, list] | None = None
+_GLOBAL_MODELS_LOCK = threading.RLock()
+_GLOBAL_CALIBRATION_PROFILE: dict[str, float] | None = None
+_GLOBAL_CALIBRATION_LOCK = threading.RLock()
 
 
 def get_global_models(settings: Settings) -> dict[str, list]:
@@ -112,10 +123,14 @@ def get_global_models(settings: Settings) -> dict[str, list]:
     if _GLOBAL_MODELS is not None:
         logger.debug("[ML] get_global_models → cache hit (%d families)", len(_GLOBAL_MODELS))
         return _GLOBAL_MODELS
-    logger.info("[ML] get_global_models -> first call; loading from disk...")
-    t0 = time.monotonic()
-    _GLOBAL_MODELS = _load_models_from_disk(settings)
-    logger.info("[ML] get_global_models → disk load done in %.3fs", time.monotonic() - t0)
+    with _GLOBAL_MODELS_LOCK:
+        if _GLOBAL_MODELS is not None:
+            logger.debug("[ML] get_global_models → cache hit after lock (%d families)", len(_GLOBAL_MODELS))
+            return _GLOBAL_MODELS
+        logger.info("[ML] get_global_models -> first call; loading from disk...")
+        t0 = time.monotonic()
+        _GLOBAL_MODELS = _load_models_from_disk(settings)
+        logger.info("[ML] get_global_models → disk load done in %.3fs", time.monotonic() - t0)
     return _GLOBAL_MODELS
 
 
@@ -164,6 +179,7 @@ def _load_models_from_disk(settings: Settings) -> dict[str, list]:
                 continue
             try:
                 model = loader(artifact)
+                logger.info("[ML] Loaded model family=%s label=%s backend=%s path=%s", family_name, label, backend, artifact)
                 loaded[label].append(
                     LoadedModel(
                         family=family_name,
@@ -187,12 +203,42 @@ def _load_models_from_disk(settings: Settings) -> dict[str, list]:
 
     summary = {k: len(v) for k, v in loaded.items()}
     total   = sum(summary.values())
+    _set_global_calibration_profile(
+        ProbabilityCalibrationService.build_entropy_profile(
+            [family_dir for _, family_dir in families],
+            settings.calibration_entropy_fallback,
+        )
+    )
     _warmup_models(loaded)
     logger.info(
         "[ML] All models loaded in %.2fs – per-label count: %s  [TOTAL=%d models]",
         time.monotonic() - t_family, summary, total,
     )
     return loaded
+
+
+def _set_global_calibration_profile(profile: dict[str, float]) -> None:
+    global _GLOBAL_CALIBRATION_PROFILE
+    with _GLOBAL_CALIBRATION_LOCK:
+        _GLOBAL_CALIBRATION_PROFILE = profile
+
+
+def _get_global_calibration_profile(settings: Settings) -> dict[str, float]:
+    global _GLOBAL_CALIBRATION_PROFILE
+    if _GLOBAL_CALIBRATION_PROFILE is not None:
+        return _GLOBAL_CALIBRATION_PROFILE
+    with _GLOBAL_CALIBRATION_LOCK:
+        if _GLOBAL_CALIBRATION_PROFILE is not None:
+            return _GLOBAL_CALIBRATION_PROFILE
+        family_dirs = [
+            d for d in sorted(settings.root_dir.glob("npk_models_*"))
+            if d.is_dir() and d.name.replace("npk_models_", "") in ENSEMBLE_FAMILIES
+        ]
+        _GLOBAL_CALIBRATION_PROFILE = ProbabilityCalibrationService.build_entropy_profile(
+            family_dirs,
+            settings.calibration_entropy_fallback,
+        )
+        return _GLOBAL_CALIBRATION_PROFILE
 
 
 def _warmup_models(models: dict[str, list]) -> None:
@@ -240,9 +286,9 @@ def _backend_spec(family_name: str) -> tuple[str, Callable | None, Callable]:
     TF functions are already registered at module level (primed at import),
     so this is now a pure O(1) dict lookup with zero import overhead.
     """
-    if family_name not in _TF_PREPROCESS_FN:
-        return "unknown", None, lambda x: x
-    return "tensorflow", _tf_load, _TF_PREPROCESS_FN[family_name]
+    if family_name not in _TF_LOAD_FN:
+        return "unknown", None, _identity_preprocess
+    return "tensorflow", _tf_load, _identity_preprocess
 
 
 def _artifact_path(family_dir: Path, label: str) -> Path | None:
@@ -250,10 +296,13 @@ def _artifact_path(family_dir: Path, label: str) -> Path | None:
     label_dir = family_dir / label
     for candidate in (label_dir / "model.keras", label_dir / "model.h5"):
         if candidate.exists():
+            logger.info("[ML] Artifact found family_dir=%s label=%s path=%s", family_dir, label, candidate)
             return candidate
+        logger.warning("[ML] Artifact missing family_dir=%s label=%s path=%s", family_dir, label, candidate)
     # PyTorch fallback
     pth = list(label_dir.glob("*.pth"))
     if pth and __import__("importlib").util.find_spec("torch") is not None:
+        logger.info("[ML] PyTorch artifact found family_dir=%s label=%s path=%s", family_dir, label, pth[0])
         return pth[0]
     return None
 
@@ -314,6 +363,7 @@ class MLPredictionService:
         self.image_quality = ImageQualityService(settings)
         self.decision      = PredictionDecisionService(settings)
         self.advice        = AgronomicAdviceService()
+        self.calibration   = ProbabilityCalibrationService(settings, _get_global_calibration_profile(settings))
 
     def load_models(self) -> dict[str, list]:
         """Backward-compatible alias – delegates to the module-level cache."""
@@ -346,10 +396,11 @@ class MLPredictionService:
             logger.exception("[ML] save_image FAILED")
             raise
 
-        # ── 2. Quality check ──────────────────────────────────────────────────
+        # ── 2. Quality check + image preparation ────────────────────────────
         t0 = time.monotonic()
         try:
-            quality_check = self.image_quality.analyze(image_bytes)
+            prepared: PreparedImage = self.image_quality.prepare_for_prediction(image_bytes)
+            quality_check = prepared.quality_check
             logger.info("[ML] QUALITY CHECK OK valid=%s width=%d height=%d brightness=%.2f contrast=%.2f sharpness=%.2f issues=%s %.3fs",
                         quality_check.valid, quality_check.width, quality_check.height,
                         quality_check.brightness, quality_check.contrast, quality_check.sharpness,
@@ -361,15 +412,20 @@ class MLPredictionService:
         # ── 3. First-pass refusal ─────────────────────────────────────────────
         t0 = time.monotonic()
         try:
-            refusal = self._refusal_first_pass(quality_check, image_bytes)
+            refusal = self._refusal_first_pass(quality_check)
             if refusal["refused"]:
                 logger.warning(
                     "[ML] image refused (pass 1): %s green_dominance=%.3f %.3fs",
                     refusal["reason"], refusal.get("green_dominance", 0.0), time.monotonic() - t_total,
                 )
                 return self._build_refusal_payload(
-                    analysis_id, image_name, image_path,
-                    user_id, parcel_id, quality_check, refusal["reason"],
+                    analysis_id=analysis_id,
+                    image_name=image_name,
+                    image_path=image_path,
+                    user_id=user_id,
+                    parcel_id=parcel_id,
+                    quality_check=quality_check,
+                    reason=refusal["reason"],
                 )
             logger.debug("[ML] refusal pass-1 %.3fs", time.monotonic() - t0)
         except Exception:
@@ -386,9 +442,13 @@ class MLPredictionService:
             logger.info("[ML] MODEL LOAD END labels=%s %.3fs", model_info, time.monotonic() - t0)
             if not any(models.values()):
                 return self._build_refusal_payload(
-                    analysis_id, image_name, image_path,
-                    user_id, parcel_id, quality_check,
-                    "aucun_modele_disponible",
+                    analysis_id=analysis_id,
+                    image_name=image_name,
+                    image_path=image_path,
+                    user_id=user_id,
+                    parcel_id=parcel_id,
+                    quality_check=quality_check,
+                    reason="aucun_modele_disponible",
                 )
         except Exception:
             logger.exception("[ML] get_global_models FAILED")
@@ -398,7 +458,18 @@ class MLPredictionService:
         t0 = time.monotonic()
         logger.info("[ML] PREDICTION START models=%d", sum(len(v) for v in models.values() if v))
         try:
-            probabilities = self._predict_probabilities(models)
+            if prepared.image_224 is None:
+                raise RuntimeError("image_224 missing after successful quality preparation")
+            logger.info(
+                "[ML] PREPARED INPUT stats shape=%s dtype=%s min=%.6f max=%.6f mean=%.6f std=%.6f",
+                prepared.image_224.shape,
+                prepared.image_224.dtype,
+                float(np.min(prepared.image_224)),
+                float(np.max(prepared.image_224)),
+                float(np.mean(prepared.image_224)),
+                float(np.std(prepared.image_224)),
+            )
+            probabilities, debug_payload, calibration_results = self._predict_probabilities(models, prepared.image_224)
             logger.info("[ML] PREDICTION END %.3fs probs=%s", time.monotonic() - t0, probabilities)
         except Exception:
             logger.exception("[ML] probabilities FAILED")
@@ -406,7 +477,19 @@ class MLPredictionService:
 
         # ── 6. Select prediction ──────────────────────────────────────────────
         try:
-            prediction = self._select_prediction(probabilities)
+            prediction, selected_scores = self._select_prediction(models, probabilities)
+            logger.info("[ML] SELECTED SCORES %s", selected_scores)
+            if any(score < 0 for score in selected_scores.values()):
+                logger.warning("[ML] prediction below learned thresholds; refusing: %s", selected_scores)
+                return self._build_refusal_payload(
+                    analysis_id=analysis_id,
+                    image_name=image_name,
+                    image_path=image_path,
+                    user_id=user_id,
+                    parcel_id=parcel_id,
+                    quality_check=quality_check,
+                    reason="confiance_trop_faible",
+                )
         except Exception:
             logger.exception("[ML] _select_prediction FAILED")
             raise
@@ -429,8 +512,13 @@ class MLPredictionService:
                     refusal2["reason"], confidence_details.max_prob, confidence_details.margin, time.monotonic() - t_total,
                 )
                 return self._build_refusal_payload(
-                    analysis_id, image_name, image_path,
-                    user_id, parcel_id, quality_check, refusal2["reason"],
+                    analysis_id=analysis_id,
+                    image_name=image_name,
+                    image_path=image_path,
+                    user_id=user_id,
+                    parcel_id=parcel_id,
+                    quality_check=quality_check,
+                    reason=refusal2["reason"],
                 )
         except Exception:
             logger.exception("[ML] refusal pass-2 FAILED")
@@ -446,7 +534,8 @@ class MLPredictionService:
 
         # ── 10. Soil score ───────────────────────────────────────────────────
         try:
-            score = self.calculate_soil_score(probabilities)
+            soil_health_score, uncertainty_metrics, score_breakdown = self.calculate_soil_health_score(probabilities, calibration_results)
+            score = int(round(soil_health_score))
         except Exception:
             logger.exception("[ML] calculate_soil_score FAILED")
             raise
@@ -493,6 +582,9 @@ class MLPredictionService:
             "analysis_id":          analysis_id,
             "model_name":           _model_name_from_cache(models),
             "prediction":           prediction,
+            "nitrogen":             self._nutrient_detail("N", prediction["N_level"], probabilities, calibration_results.get("N")),
+            "phosphorus":           self._nutrient_detail("P", prediction["P_level"], probabilities, calibration_results.get("P")),
+            "potassium":            self._nutrient_detail("K", prediction["K_level"], probabilities, calibration_results.get("K")),
             "confidence":           confidence,
             "status":               status,
             "can_trust_result":     self.decision.can_trust(status),
@@ -510,6 +602,10 @@ class MLPredictionService:
             "source":               f"uploaded_image:{user_id}" if user_id else "uploaded_image",
             "model_status":         "ready",
             "probabilities":        probabilities,
+            "soil_health_score":    soil_health_score,
+            "uncertainty_metrics":  uncertainty_metrics,
+            "debug":                debug_payload if self.settings.debug_predictions else None,
+            "score_breakdown":      score_breakdown if self.settings.debug_predictions else None,
             "score":                score,
             "refused":              False,
             "refusal_reason":       None,
@@ -521,71 +617,16 @@ class MLPredictionService:
 
     # ─── Pixel preload / 224×224 build (called once per prediction) ──────────
 
-    def _preload_pixels(self, image_bytes: bytes) -> np.ndarray:
-        """Load image from *image_bytes* once and return float32 RGB array.
-
-        Called by _refusal_first_pass() and cached; _refusal_second_pass(),
-        _prebuild_224() and _predict_probabilities() all reuse the result –
-        zero additional BytesIO/Image.open calls per request.
-        """
-        with Image.open(BytesIO(image_bytes)) as img:
-            img = ImageOps.exif_transpose(img).convert("RGB")
-            return np.asarray(img, dtype=np.float32) / 255.0  # H×W×3 float32 ∈ [0,1]
-
-    def _prebuild_224(self, image_bytes: bytes) -> np.ndarray:
-        """Resize + build the 224×224 float32 H×W×3 array used by every model.
-
-        Called once and stored/returned by lazy _preload_result cache on self.
-        """
-        # Fast path: already cached
-        if hasattr(self, "_preload_result") and self._preload_result is not None:
-            return self._preload_result  # type: ignore[return-value]
-
-        with Image.open(BytesIO(image_bytes)) as img:
-            img = ImageOps.exif_transpose(img).convert("RGB")
-            img = img.resize((224, 224), Image.LANCZOS)
-            arr = np.asarray(img, dtype=np.float32)  # 224×224×3, raw uint8/float
-
-        self._preload_result = arr
-        return arr
-
-    def _preload_for_prediction(self, image_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
-        """One-stop pre-load: returns (pixels_f01, img_224_raw_f32).
-
-        *pixels_f01*  – H×W×3 float32 ∈ [0,1]; used for refusal RGB analysis.
-        *img_224_raw_f32* – 224×224×3 float32 raw pixel values; passed to
-        each model's preprocess() which converts to the backend's expected range
-        (e.g. TF's [-1,1] for EfficientNetV2) without needing Image.resize again.
-        """
-        t_pre = time.monotonic()
-        logger.info("[ML] IMAGE SHAPE START bytes=%d", len(image_bytes))
-        with Image.open(BytesIO(image_bytes)) as img:
-            logger.info("[ML] IMAGE OPENED format=%s size=%s mode=%s", getattr(img, "format", None), img.size, img.mode)
-            img   = ImageOps.exif_transpose(img).convert("RGB")
-            logger.info("[ML] IMAGE CONVERTED size=%s", img.size)
-            pixels = np.asarray(img, dtype=np.float32) / 255.0   # refusal [0,1]
-            logger.info("[ML] PIXELS shape=%s range=[%.3f, %.3f]", pixels.shape, pixels.min(), pixels.max())
-            img224 = img.resize((224, 224), Image.LANCZOS)
-            img224_arr = np.asarray(img224, dtype=np.float32)   # model input raw
-            logger.info("[ML] IMAGE 224 READY shape=%s range=[%.3f, %.3f] %.3fs", img224_arr.shape, img224_arr.min(), img224_arr.max(), time.monotonic() - t_pre)
-
-        self._pixels_f01    = pixels
-        self._preload_result = img224_arr
-        return pixels, img224_arr
-
     # ─── Refusal detection ───────────────────────────────────────────────────
 
     def _refusal_first_pass(
-        self, quality_check: QualityCheck, image_bytes: bytes,
+        self, quality_check: QualityCheck,
     ) -> dict[str, object]:
         """Fast image-quality gate – refuse ONLY if image is invalid (blurry, too dark, etc.)."""
         if not quality_check.valid:
             logger.info("[Refusal] First pass: quality invalid, issues=%s", quality_check.issues)
             return {"refused": True, "reason": "image_non_exploitable"}
-        
-        # Preload pixels for prediction (used later)
-        self._pixels_f01, self._preload_result = self._preload_for_prediction(image_bytes)
-        
+
         # Accept all valid images - no green dominance check
         logger.info("[Refusal] First pass: quality valid, accepting")
         return {"refused": False, "reason": None}
@@ -654,20 +695,27 @@ class MLPredictionService:
     # ─── Prediction ───────────────────────────────────────────────────────────
 
     def _predict_probabilities(
-        self, models: dict[str, list],
-    ) -> dict[str, float]:
-        """Run every loaded model on the same 224×224 pre-built array.
+        self, models: dict[str, list], img_224: np.ndarray,
+    ) -> tuple[dict[str, float], dict[str, object] | None, dict[str, CalibrationResult]]:
+        """Run every loaded model on the same 224×224 pre-built array."""
 
-        Uses cached img_224 from _preload_for_prediction (already called in pass 1).
-        """
-        assert hasattr(self, "_preload_result") and self._preload_result is not None
-        img_224 = self._preload_result
+        logger.info(
+            "[ML] INPUT TENSOR stats shape=%s dtype=%s min=%.3f max=%.3f mean=%.3f",
+            img_224.shape,
+            img_224.dtype,
+            float(np.min(img_224)),
+            float(np.max(img_224)),
+            float(np.mean(img_224)),
+        )
 
         total_model_count = sum(len(models.get(label, [])) for label in LABELS)
         if total_model_count <= 0:
-            return {label: 0.0 for label in LABELS}
+            return {label: 0.0 for label in LABELS}, None, {}
 
-        predictions_by_label: dict[str, list[tuple[float, float]]] = {label: [] for label in LABELS}
+        predictions_by_label: dict[str, list[tuple[float, float, list[float], tuple[int, ...] | None]]] = {
+            label: [] for label in LABELS
+        }
+        debug_models: list[dict[str, object]] = []
 
         # Run per-model inference concurrently to reduce end-to-end latency.
         max_workers = min(8, total_model_count)
@@ -681,13 +729,25 @@ class MLPredictionService:
             for future in as_completed(futures):
                 label, weight = futures[future]
                 try:
-                    prob = float(future.result())
+                    prob, raw_output, output_shape = future.result()
                 except Exception:
                     logger.exception("[ML] concurrent predict failed for label=%s", label)
                     prob = 0.0
-                predictions_by_label[label].append((prob, weight))
+                    raw_output = []
+                    output_shape = None
+                predictions_by_label[label].append((float(prob), weight, list(raw_output), output_shape))
+                if self.settings.debug_predictions:
+                    debug_models.append(
+                        {
+                            "label": label,
+                            "weight": weight,
+                            "probability": float(prob),
+                            "raw_output": list(raw_output),
+                            "output_shape": list(output_shape) if output_shape is not None else None,
+                        }
+                    )
 
-        probabilities: dict[str, float] = {label: 0.0 for label in LABELS}
+        raw_probabilities: dict[str, float] = {label: 0.0 for label in LABELS}
         for label in LABELS:
             values_and_weights = predictions_by_label.get(label, [])
             if not values_and_weights:
@@ -699,47 +759,130 @@ class MLPredictionService:
             w_arr = np.asarray(weights, dtype=np.float32)
             if w_arr.sum() <= 0:
                 w_arr = np.ones_like(w_arr)
-            probabilities[label] = float(
+            raw_probabilities[label] = float(
                 np.average(np.asarray(values, dtype=np.float32), weights=w_arr)
             )
-            logger.debug("[ML]  label=%s  n_models=%d  prob=%.6f", label, len(values), probabilities[label])
-        return probabilities
+            logger.debug("[ML]  label=%s  n_models=%d  prob=%.6f", label, len(values), raw_probabilities[label])
 
-    def _predict_with_model(self, loaded: LoadedModel, img_224: np.ndarray) -> float:
+        logger.info(
+            "[ML] RAW PROBABILITIES K=%s N=%s P=%s",
+            {label: raw_probabilities[label] for label in NUTRIENTS["K"]},
+            {label: raw_probabilities[label] for label in NUTRIENTS["N"]},
+            {label: raw_probabilities[label] for label in NUTRIENTS["P"]},
+        )
+        probabilities, calibration_results = self.calibration.calibrate_probabilities(raw_probabilities)
+        logger.info(
+            "[ML] CALIBRATED PROBABILITIES K=%s N=%s P=%s",
+            {label: probabilities[label] for label in NUTRIENTS["K"]},
+            {label: probabilities[label] for label in NUTRIENTS["N"]},
+            {label: probabilities[label] for label in NUTRIENTS["P"]},
+        )
+        debug_payload: dict[str, object] | None = None
+        if self.settings.debug_predictions:
+            debug_payload = {
+                "calibration_mode": "gamma",
+                "calibration_factor": self.calibration._gamma(),
+                "temperature_proxy": float(self.settings.calibration_temperature),
+                "entropy_baseline": {nutrient: result.entropy_baseline for nutrient, result in calibration_results.items()},
+                "raw_probabilities": raw_probabilities,
+                "calibrated_probabilities": probabilities,
+                "entropy_before": {nutrient: result.raw_entropy for nutrient, result in calibration_results.items()},
+                "entropy_after": {nutrient: result.calibrated_entropy for nutrient, result in calibration_results.items()},
+                "uncertainty_adjustment": {nutrient: result.uncertainty_adjustment for nutrient, result in calibration_results.items()},
+                "models": debug_models,
+            }
+        return probabilities, debug_payload, calibration_results
+
+    def _predict_with_model(self, loaded: LoadedModel, img_224: np.ndarray) -> tuple[float, list[float], tuple[int, ...] | None]:
         """Run a single model inference on a pre-built 224×224 float32 array."""
         import time as _time
         t_infer = _time.monotonic()
-        logger.info("[ML] MODEL PREDICT START label=%s family=%s shape=%s", loaded.label, loaded.family, img_224.shape)
-        # img_224 is H×W×3 float32 raw pixel values (0–255 range).
-        # Each model's preprocess function converts it to the backend's expected
-        # range (TF preprocess_input handles [-1,1] or [0,1] etc.).
+        logger.info("[ML] MODEL PREDICT START label=%s family=%s path=%s shape=%s threshold=%.4f", loaded.label, loaded.family, loaded.path, img_224.shape, loaded.threshold)
         try:
-            processed = loaded.preprocess(img_224)
-            logger.info("[ML] PREPROCESS done shape=%s range=[%.3f, %.3f]", processed.shape, processed.min(), processed.max())
-            batch = np.expand_dims(processed, axis=0)  # (1, 224, 224, 3)
+            img_array = img_224.astype(np.float32, copy=False)
+            logger.info(
+                "[ML] MODEL INPUT stats label=%s family=%s min=%.6f max=%.6f mean=%.6f std=%.6f",
+                loaded.label,
+                loaded.family,
+                float(np.min(img_array)),
+                float(np.max(img_array)),
+                float(np.mean(img_array)),
+                float(np.std(img_array)),
+            )
+            logger.info("[ML] SHAPE BEFORE EXPAND: %s", img_array.shape)
+            batch = np.expand_dims(img_array, axis=0)
+            logger.info("[ML] FINAL SHAPE: %s", batch.shape)
 
             if loaded.backend == "tensorflow":
                 logger.info("[ML] CALLING TENSORFLOW PREDICT")
-                result = loaded.model.predict(batch, verbose=0)  # type: ignore[union-attr]
-                prob = float(np.asarray(result).ravel()[0])
+                result = loaded.model(batch, training=False)  # type: ignore[operator]
+                flat = np.asarray(result).ravel()
+                logger.info(
+                    "[ML] MODEL RAW OUTPUT label=%s family=%s path=%s output_shape=%s values=%s",
+                    loaded.label,
+                    loaded.family,
+                    loaded.path,
+                    getattr(result, "shape", None),
+                    np.array2string(flat, precision=6, separator=", "),
+                )
+                prob = _extract_probability(flat)
+                output_shape = tuple(result.shape) if hasattr(result, "shape") else None
             else:
                 import torch  # lazy – torch is an optional dependency
                 tensor = torch.from_numpy(batch).permute(0, 3, 1, 2).float()
                 with torch.no_grad():
                     out = loaded.model(tensor)
-                prob = float(out.detach().cpu().numpy().ravel()[0])
-            logger.info("[ML] MODEL PREDICT END label=%s elapsed=%.3fs prob=%.4f", loaded.label, _time.monotonic() - t_infer, prob)
-            return prob
+                flat = out.detach().cpu().numpy().ravel()
+                logger.info(
+                    "[ML] MODEL RAW OUTPUT label=%s family=%s path=%s output_shape=%s values=%s",
+                    loaded.label,
+                    loaded.family,
+                    loaded.path,
+                    tuple(out.shape),
+                    np.array2string(flat, precision=6, separator=", "),
+                )
+                prob = _extract_probability(flat)
+                output_shape = tuple(out.shape)
+            logger.info(
+                "[ML] MODEL PREDICT END label=%s family=%s path=%s elapsed=%.3fs prob=%.6f",
+                loaded.label,
+                loaded.family,
+                loaded.path,
+                _time.monotonic() - t_infer,
+                prob,
+            )
+            return prob, flat.tolist(), output_shape
         except Exception as e:
             logger.exception("[ML] MODEL PREDICT FAILED label=%s error=%s", loaded.label, e)
-            return 0.0
+            return 0.0, [], None
 
-    def _select_prediction(self, probabilities: dict[str, float]) -> dict[str, str]:
-        """Choose the highest-probability label per nutrient group."""
-        return {
-            f"{nutrient}_level": max(labels, key=lambda lbl: probabilities.get(lbl, 0.0))
-            for nutrient, labels in NUTRIENTS.items()
-        }
+    def _select_prediction(self, models: dict[str, list], probabilities: dict[str, float]) -> tuple[dict[str, str], dict[str, float]]:
+        """Choose the strongest label per nutrient, but require a threshold margin."""
+        prediction: dict[str, str] = {}
+        selected_scores: dict[str, float] = {}
+
+        for nutrient, labels in NUTRIENTS.items():
+            best_label = None
+            best_score = float("-inf")
+            for label in labels:
+                label_probability = float(probabilities.get(label, 0.0))
+                label_models = models.get(label, [])
+                if label_models:
+                    threshold = float(np.mean([loaded.threshold for loaded in label_models]))
+                else:
+                    threshold = 0.5
+                score = label_probability - threshold
+                if score > best_score:
+                    best_score = score
+                    best_label = label
+
+            if best_label is None:
+                raise RuntimeError(f"No candidate label found for nutrient {nutrient}")
+
+            prediction[f"{nutrient}_level"] = best_label
+            selected_scores[nutrient] = round(best_score, 6)
+
+        return prediction, selected_scores
 
     # ─── Post-processing helpers ──────────────────────────────────────────────
 
@@ -755,25 +898,112 @@ class MLPredictionService:
         return round(max(0.0, min(1.0, avg * 0.7 + details.margin * 0.3)), 4)
 
     def calculate_soil_score(self, probabilities: dict[str, float]) -> int:
-        nutrient_weights = {
-            "K": {"K0": -24, "K1": -6, "K2": 8},
-            "N": {"N0": -20, "N1": -5, "N2": 9},
-            "P": {"P0": -30, "P1": 8},
+        score, _, _ = self.calculate_soil_health_score(probabilities)
+        return int(round(score))
+
+    def _entropy(self, values: list[float]) -> float:
+        array = np.asarray(values, dtype=np.float32)
+        if array.size == 0:
+            return 0.0
+        total = float(array.sum())
+        if total <= 0:
+            return 0.0
+        normalized = array / total
+        entropy = -float(np.sum(np.where(normalized > 0, normalized * np.log(normalized), 0.0)))
+        if normalized.size <= 1:
+            return 0.0
+        return float(entropy / np.log(normalized.size))
+
+    def _nutrient_analysis(
+        self,
+        nutrient: str,
+        probabilities: dict[str, float],
+        calibration_result: CalibrationResult | None = None,
+    ) -> dict[str, float | list[float] | str]:
+        labels = NUTRIENTS[nutrient]
+        vector = [max(float(probabilities.get(lbl, 0.0)), 0.0) for lbl in labels]
+        raw_vector = calibration_result.raw_probabilities if calibration_result else vector
+        calibrated_vector = calibration_result.calibrated_probabilities if calibration_result else vector
+        indexed = sorted(calibrated_vector, reverse=True)
+        max_prob = float(indexed[0]) if indexed else 0.0
+        second_max = float(indexed[1]) if len(indexed) > 1 else 0.0
+        variance_index = max(max_prob - second_max, 0.0)
+        uncertainty_score = (second_max / max_prob) if max_prob > 0 else 1.0
+        raw_entropy = self._entropy(raw_vector)
+        entropy = self._entropy(calibrated_vector)
+        entropy_baseline = float(calibration_result.entropy_baseline) if calibration_result else float(self.settings.calibration_entropy_fallback)
+        entropy_ratio = float(calibration_result.entropy_ratio) if calibration_result else (entropy / entropy_baseline if entropy_baseline > 0 else 1.0)
+        uncertainty_adjustment = float(calibration_result.uncertainty_adjustment) if calibration_result else 1.0
+        uncertainty_score = min(max(uncertainty_score * uncertainty_adjustment, 0.0), 1.0)
+        return {
+            "class": labels[int(np.argmax(calibrated_vector))] if calibrated_vector else labels[0],
+            "confidence": round(max_prob, 4),
+            "probabilities": [round(value, 6) for value in calibrated_vector],
+            "raw_probabilities": [round(value, 6) for value in raw_vector],
+            "calibrated_probabilities": [round(value, 6) for value in calibrated_vector],
+            "raw_entropy": round(raw_entropy, 4),
+            "entropy": round(entropy, 4),
+            "calibrated_entropy": round(entropy, 4),
+            "entropy_baseline": round(entropy_baseline, 4),
+            "entropy_ratio": round(entropy_ratio, 4),
+            "calibration_factor": round(float(calibration_result.calibration_factor), 4) if calibration_result else round(self.calibration._gamma(), 4),
+            "variance_index": round(variance_index, 4),
+            "uncertainty_score": round(min(max(uncertainty_score, 0.0), 1.0), 4),
+            "uncertainty_adjustment": round(uncertainty_adjustment, 4),
+            "softened": bool(calibration_result.softened) if calibration_result else False,
         }
-        score = 100.0
-        for nutrient, labels in NUTRIENTS.items():
-            values = np.array(
-                [max(probabilities.get(lbl, 0.0), 0.0) for lbl in labels],
-                dtype=np.float32,
-            )
-            if float(values.sum()) <= 0:
-                continue
-            weights = np.array(
-                [nutrient_weights[nutrient][lbl] for lbl in labels],
-                dtype=np.float32,
-            )
-            score += float(np.dot(values / values.sum(), weights))
-        return int(max(0, min(100, round(score))))
+
+    def _interpret_nutrient_context(self, analysis: dict[str, float | list[float] | str]) -> str:
+        confidence = float(analysis.get("confidence", 0.0))
+        entropy = float(analysis.get("entropy", 0.0))
+        uncertainty = float(analysis.get("uncertainty_score", 1.0))
+        if confidence > 0.85 and entropy < 0.45 and uncertainty < 0.45:
+            return "état stable"
+        if confidence >= 0.5 and entropy >= 0.55:
+            return "zone incertaine"
+        if confidence < 0.5:
+            return "risque de déséquilibre"
+        return "lecture intermédiaire"
+
+    def calculate_soil_health_score(
+        self,
+        probabilities: dict[str, float],
+        calibration_results: dict[str, CalibrationResult] | None = None,
+    ) -> tuple[float, dict[str, dict[str, float | list[float] | str]], dict[str, float]]:
+        k = self._nutrient_analysis("K", probabilities, calibration_results.get("K") if calibration_results else None)
+        n = self._nutrient_analysis("N", probabilities, calibration_results.get("N") if calibration_results else None)
+        p = self._nutrient_analysis("P", probabilities, calibration_results.get("P") if calibration_results else None)
+
+        max_mean = (float(k["confidence"]) + float(n["confidence"]) + float(p["confidence"])) / 3.0
+        uncertainty_penalty = ((float(k["uncertainty_score"]) + float(n["uncertainty_score"]) + float(p["uncertainty_score"])) / 3.0)
+        score = (max_mean * 100.0) - (uncertainty_penalty * 10.0)
+        score = max(0.0, min(100.0, round(score, 2)))
+
+        uncertainty_metrics = {
+            "K": {k_: float(v) if isinstance(v, (int, float)) else v for k_, v in k.items() if k_ != "class" and k_ != "probabilities"},
+            "N": {k_: float(v) if isinstance(v, (int, float)) else v for k_, v in n.items() if k_ != "class" and k_ != "probabilities"},
+            "P": {k_: float(v) if isinstance(v, (int, float)) else v for k_, v in p.items() if k_ != "class" and k_ != "probabilities"},
+        }
+
+        score_breakdown = {
+            "max_mean": round(max_mean, 4),
+            "uncertainty_penalty": round(uncertainty_penalty, 4),
+            "formula": "((K_max + N_max + P_max) / 3) * 100 - (uncertainty_penalty * 10)",
+        }
+        return score, uncertainty_metrics, score_breakdown
+
+    def _nutrient_detail(
+        self,
+        nutrient: str,
+        label: str,
+        probabilities: dict[str, float],
+        calibration_result: CalibrationResult | None = None,
+    ) -> dict[str, object]:
+        analysis = self._nutrient_analysis(nutrient, probabilities, calibration_result)
+        analysis["class"] = label
+        analysis["signal_score"] = round(1.0 - float(analysis.get("uncertainty_score", 1.0)), 4)
+        analysis["interpretation"] = self._interpret_nutrient_context(analysis)
+        return analysis
 
     # ─── Advice ───────────────────────────────────────────────────────────────
 
@@ -786,24 +1016,18 @@ class MLPredictionService:
     ) -> tuple[str, str]:
         parts: list[str] = []
 
-        p_lvl = prediction.get("P_level", "P1")
-        n_lvl = prediction.get("N_level", "N1")
-        k_lvl = prediction.get("K_level", "K1")
-
-        if p_lvl == "P0":
-            parts.append("Le phosphore semble insuffisant. Une fertilisation phosphatée modérée peut être envisagée après confirmation.")
-        elif p_lvl == "P1":
-            parts.append("Le phosphore paraît acceptable, avec un suivi régulier recommandé.")
-
-        if n_lvl == "N0":
-            parts.append("Le sol montre un signal azoté faible. Surveiller les besoins de croissance.")
-        elif n_lvl == "N1":
-            parts.append("L'azote est intermédiaire : maintenir un suivi de croissance et de vigueur.")
-
-        if k_lvl == "K0":
-            parts.append("Le potassium paraît faible. Vérifier les besoins hydriques et la fertilisation.")
-        elif k_lvl == "K1":
-            parts.append("Le potassium est intermédiaire : un suivi terrain reste pertinent.")
+        nutrient_names = {"K": "potassium", "N": "azote", "P": "phosphore"}
+        for nutrient, level_key in (("P", "P_level"), ("N", "N_level"), ("K", "K_level")):
+            analysis = self._nutrient_analysis(nutrient, probabilities)
+            predicted = prediction.get(level_key, NUTRIENTS[nutrient][0])
+            if self._interpret_nutrient_context(analysis) == "état stable":
+                parts.append(f"Le {nutrient_names[nutrient]} paraît stable ({predicted}).")
+            elif self._interpret_nutrient_context(analysis) == "zone incertaine":
+                parts.append(f"Le {nutrient_names[nutrient]} est dans une zone incertaine ({predicted}).")
+            elif self._interpret_nutrient_context(analysis) == "risque de déséquilibre":
+                parts.append(f"Le {nutrient_names[nutrient]} montre un risque de déséquilibre ({predicted}).")
+            else:
+                parts.append(f"Le {nutrient_names[nutrient]} reste intermédiaire ({predicted}).")
 
         if   score <= 30: parts.append("Le score global est critique : prioriser une confirmation laboratoire avant action.")
         elif score <= 50: parts.append("Le score global reste faible : une surveillance rapprochée est préférable.")
@@ -822,10 +1046,13 @@ class MLPredictionService:
         self, prediction: dict[str, str], confidence: float, status: str,
     ) -> str:
         base = f"Lecture NPK : {prediction['K_level']} / {prediction['N_level']} / {prediction['P_level']}."
-        if   status == "image_non_exploitable": return base + " Image non exploitable pour une décision fiable."
-        if   confidence >= 0.80:                  return base + " Signal solide pour un pré-diagnostic terrain."
-        elif confidence >= 0.60:                  return base + " Lecture utile, à confirmer selon le contexte parcellaire."
-        return base + " Lecture exploratoire à confirmer par laboratoire."
+        if status == "image_non_exploitable":
+            return base + " Image non exploitable pour une lecture fiable."
+        if confidence > 0.85:
+            return base + " état stable sur le plan interprétatif."
+        if confidence >= 0.5:
+            return base + " zone incertaine à confirmer selon le terrain."
+        return base + " risque de déséquilibre à confirmer par examen externe."
 
     def _build_refusal_payload(
         self,
@@ -845,6 +1072,9 @@ class MLPredictionService:
             "analysis_id":           analysis_id,
             "model_name":            "SoilAI ML Ensemble",
             "prediction":            NutrientPrediction(**prediction),
+            "nitrogen":              None,
+            "phosphorus":            None,
+            "potassium":             None,
             "confidence":            0.0,
             "status":                "image_non_exploitable",
             "can_trust_result":      False,
@@ -855,6 +1085,10 @@ class MLPredictionService:
             "agronomic_advice":      agronomic_advice,
             "field_advice":          "Impossible de fournir un conseil fiable avec cette image.",
             "field_disclaimer":      self.advice.field_disclaimer(),
+            "soil_health_score":     0.0,
+            "uncertainty_metrics":   {},
+            "debug":                 None,
+            "score_breakdown":       {"max_mean": 0.0, "uncertainty_penalty": 0.0, "formula": "((K_max + N_max + P_max) / 3) * 100 - (uncertainty_penalty * 10)"},
             "warning_message":       "Cette image ne permet pas une estimation fiable du sol.",
             "recommendation_message":"Reprendre une photo plus nette, bien éclairée et centrée sur le sol.",
             "is_mock":               False,

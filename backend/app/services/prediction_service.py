@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 
 from fastapi.concurrency import run_in_threadpool
@@ -14,7 +15,7 @@ from app.services.ml_prediction_service import MLPredictionService
 
 logger = logging.getLogger(__name__)
 
-PREDICTION_TIMEOUT_SECONDS = 12.0
+PREDICTION_TIMEOUT_SECONDS = float(os.environ.get("PREDICTION_TIMEOUT_SECONDS", "120"))
 
 
 class PredictionService:
