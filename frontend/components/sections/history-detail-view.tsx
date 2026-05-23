@@ -13,6 +13,8 @@ import { ParcelTimeline } from '@/components/ui/parcel-timeline';
 import { RefusalAnalysisCard } from '@/components/ui/refusal-analysis-card';
 import { SmartAdviceCard } from '@/components/ui/smart-advice-card';
 import { SoilHealthCard } from '@/components/ui/soil-health-card';
+import DebugPanel from '@/components/ui/debug-panel';
+import ComparisonCard from '@/components/ui/comparison-card';
 import { downloadHistoryCsv, downloadHistoryPdf, getHistory, getHistoryEntry } from '@/lib/api';
 import { API_BASE } from '@/lib/api';
 import type { HistoryEntry } from '@/lib/types';
@@ -339,6 +341,15 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
                         <div className="mt-2 text-sm text-soil-600">
                           {confidenceDelta === null ? 'Non disponible' : confidenceDelta >= 0 ? `+${confidenceDelta}%` : `${confidenceDelta}%`} depuis la derniere analyse
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <ComparisonCard comparison={comparison} />
+                      </div>
+                      <div>
+                        {prediction?.debug ? <DebugPanel result={prediction} /> : null}
                       </div>
                     </div>
                   </div>

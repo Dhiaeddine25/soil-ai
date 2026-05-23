@@ -11,6 +11,7 @@ import { AdviceCard } from '@/components/ui/advice-card';
 import { AgricultureCard } from '@/components/ui/agriculture-card';
 import { ConfidenceIndicator } from '@/components/ui/confidence-indicator';
 import { NutrientCard } from '@/components/ui/nutrient-card';
+import DebugPanel from '@/components/ui/debug-panel';
 import { RefusalCard } from '@/components/ui/refusal-card';
 import { SoilStatusCard } from '@/components/ui/soil-status-card';
 import { useI18n } from '@/components/i18n/i18n-provider';
@@ -251,6 +252,12 @@ export function UploadLab({ initialParcelId }: { initialParcelId?: string }) {
                 body={result.recommendation_message ?? result.recommendation}
                 disclaimer={agronomicAdvice?.global_advice.warning ?? 'Conseil indicatif base sur une analyse d’image.'}
               />
+
+              {result?.debug ? (
+                <div className="mt-4">
+                  <DebugPanel result={result} />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
