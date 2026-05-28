@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-import threading
 
 # Set TensorFlow process env before importing services that import TF.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -19,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router
 from app.core.config import get_settings
 from app.db.init_db import init_db
-from app.services.ml_prediction_service import get_global_models, reset_global_models
+from app.services.ml_prediction_service import preload_global_models, reset_global_models
 
 # ── Timeout middleware ─────────────────────────────────────────────────────────
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -110,7 +109,7 @@ def on_startup() -> None:
     logger.info(f"Database path : {settings.database_path}")
     logger.info(f"Database exists: {settings.database_path.exists()}")
 
-    # ── Step 1 – Clear any stale cache, then warm it once ───────────────────
+    # ── Step 1 – Clear any stale cache, then preload it synchronously ──────
     reset_global_models()
     logger.info("[Startup] reset_global_models done  %.3fs", time.monotonic() - t_start)
 
@@ -118,24 +117,22 @@ def on_startup() -> None:
         "1", "true", "yes", "on"
     }
     if preload_models:
-        def _warm_models() -> None:
-            try:
-                t_load = time.monotonic()
-                models = get_global_models(settings)
-                model_summary = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
-                model_total = sum(len(v) for k, v in models.items() if k != "_elapsed_s")
-                logger.info(
-                    "[Startup] Modèles préchargés (%d modèles)  labels=%s  elapsed=%.3fs",
-                    model_total, model_summary, time.monotonic() - t_load,
-                )
-            except Exception as exc:
-                logger.warning(
-                    "[Startup] Échec préchargement modèles (prévisible si aucun entraîné) : %s",
-                    exc,
-                )
-
-        threading.Thread(target=_warm_models, name="model-warmup", daemon=True).start()
-        logger.info("[Startup] Background model warmup launched")
+        try:
+            logger.info("Loading nitrogen model...")
+            logger.info("Loading phosphorus model...")
+            logger.info("Loading potassium model...")
+            t_load = time.monotonic()
+            models = preload_global_models(settings)
+            model_summary = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
+            model_total = sum(len(v) for k, v in models.items() if k != "_elapsed_s")
+            logger.info(
+                "[Startup] Modèles préchargés (%d modèles)  labels=%s  elapsed=%.3fs",
+                model_total, model_summary, time.monotonic() - t_load,
+            )
+            logger.info("All models loaded successfully.")
+        except Exception:
+            logger.exception("[Startup] Fatal model preload failure")
+            raise
     else:
         logger.info(
             "[Startup] Preload modèles désactivé (PRELOAD_MODELS_ON_STARTUP=0) ; "

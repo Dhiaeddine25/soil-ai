@@ -30,21 +30,13 @@ export function AuthShell({ children, variant = 'login' }: { children: React.Rea
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur">
-              <ShieldCheck className="h-5 w-5 text-leaf-700" />
-              <div className="mt-3 text-sm font-semibold text-soil-900">Accès sécurisé</div>
-              <div className="mt-1 text-xs leading-5 text-soil-600">Compte protégé et session privée pour chaque utilisateur.</div>
-            </div>
-            <div className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur">
-              <ScanSearch className="h-5 w-5 text-soil-700" />
-              <div className="mt-3 text-sm font-semibold text-soil-900">Analyse rapide</div>
-              <div className="mt-1 text-xs leading-5 text-soil-600">Importez une image et lancez l’analyse en quelques secondes.</div>
-            </div>
-            <div className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur">
-              <ArrowRight className="h-5 w-5 text-amber-700" />
-              <div className="mt-3 text-sm font-semibold text-soil-900">Résultats lisibles</div>
-              <div className="mt-1 text-xs leading-5 text-soil-600">Historique, conseils et score terrain centralisés.</div>
-            </div>
+            {messages.landing.features?.map((f, idx) => (
+              <div key={idx} className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur">
+                {idx === 0 ? <ShieldCheck className="h-5 w-5 text-leaf-700" /> : idx === 1 ? <ScanSearch className="h-5 w-5 text-soil-700" /> : <ArrowRight className="h-5 w-5 text-amber-700" />}
+                <div className="mt-3 text-sm font-semibold text-soil-900">{f.title}</div>
+                <div className="mt-1 text-xs leading-5 text-soil-600">{f.description}</div>
+              </div>
+            ))}
           </div>
 
           <div className="text-sm text-soil-600">
@@ -64,7 +56,7 @@ export function AuthShell({ children, variant = 'login' }: { children: React.Rea
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.22em] text-soil-500">SoilAI</div>
-                <div className="text-lg font-semibold text-soil-900">{variant === 'register' ? 'Créer un compte' : 'Se connecter'}</div>
+                <div className="text-lg font-semibold text-soil-900">{variant === 'register' ? messages.auth.registerTitle : messages.auth.loginTitle}</div>
               </div>
             </div>
             {children}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '@/components/i18n/i18n-provider';
 
 interface CameraCaptureProps {
   onCapture: (blob: Blob) => void;
@@ -8,6 +9,7 @@ interface CameraCaptureProps {
 }
 
 export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
+  const { messages } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -30,7 +32,7 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
         }
       } catch (err) {
         console.error('Error accessing camera:', err);
-        onError('Impossible d\'accéder à la caméra. Veuillez vérifier les permissions.');
+        onError(messages.analysis.accessError);
       }
     };
 
@@ -48,13 +50,13 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
 
   const handleCapture = () => {
     if (!videoRef.current || !videoRef.current.srcObject || !isStreamActive) {
-      onError('La caméra n\'est pas prête.');
+      onError(messages.analysis.cameraNotReady);
       return;
     }
 
     const canvas = canvasRef.current;
     if (!canvas) {
-      onError('Erreur interne : canvas non disponible.');
+      onError(messages.analysis.internalCanvasError);
       return;
     }
 
@@ -76,7 +78,7 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
       if (blob) {
         onCapture(blob);
       } else {
-        onError('Impossible de capturer l\'image.');
+        onError(messages.analysis.captureError);
       }
     }, 'image/jpeg', 0.9);
   };
@@ -84,9 +86,7 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
   if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return (
       <div className="text-center py-8">
-        <p className="text-sm text-amber-900 bg-amber-50 rounded-2xl p-4">
-          La capture d'image n'est pas disponible sur cet appareil.
-        </p>
+        <p className="text-sm text-amber-900 bg-amber-50 rounded-2xl p-4">{messages.analysis.captureUnavailable}</p>
       </div>
     );
   }
@@ -104,7 +104,7 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
         <button
           onClick={handleCapture}
           className="w-12 h-12 rounded-full bg-leaf-600 text-white flex items-center justify-center hover:bg-leaf-700 transition-shadow shadow-lg"
-          aria-label="Capturer une image"
+          aria-label={messages.analysis.captureAriaLabel}
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -118,7 +118,7 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
             setIsStreamActive(false);
           }}
           className="w-10 h-10 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center hover:bg-amber-300 transition-shadow shadow"
-          aria-label="Arrêter la caméra"
+          aria-label={messages.analysis.stopAriaLabel}
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -144,12 +144,12 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
                 }
               }).catch(err => {
                 console.error('Error restarting camera:', err);
-                onError('Impossible de redémarrer la caméra.');
+                onError(messages.analysis.restartError);
               });
             }}
             className="rounded-xl bg-white/90 backdrop-blur-sm px-6 py-3 text-leaf-800 font-medium hover:bg-white/80 transition-shadow shadow"
           >
-            Démarrer la caméra
+            {messages.analysis.startCameraLabel}
           </button>
         </div>
       )}

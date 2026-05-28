@@ -106,9 +106,9 @@ def _extract_probability(raw_output: np.ndarray) -> float:
 
 
 # ── Global model cache: loaded once at startup, shared across all requests ────
-# Pattern: readers call get_global_models(); the Fn returns the cached dict
-# immediately (no disk I/O after the first warm call).
-# reset_global_models() puts _GLOBAL_MODELS back to None so a fresh call
+# Pattern: startup calls preload_global_models(); request handlers call
+# get_cached_global_models() so there is no disk I/O inside /predict.
+# reset_global_models() puts _GLOBAL_MODELS back to None so a fresh preload
 # re-scans disk (handy in dev when retraining a model).
 
 _GLOBAL_MODELS: dict[str, list] | None = None
@@ -117,28 +117,41 @@ _GLOBAL_CALIBRATION_PROFILE: dict[str, float] | None = None
 _GLOBAL_CALIBRATION_LOCK = threading.RLock()
 
 
-def get_global_models(settings: Settings) -> dict[str, list]:
-    """Return models from cache; load-and-cache on first call after reset."""
+def preload_global_models(settings: Settings) -> dict[str, list]:
+    """Load models into cache and run warmup if the cache is empty."""
     global _GLOBAL_MODELS
     if _GLOBAL_MODELS is not None:
-        logger.debug("[ML] get_global_models → cache hit (%d families)", len(_GLOBAL_MODELS))
+        logger.debug("[ML] preload_global_models → cache hit (%d families)", len(_GLOBAL_MODELS))
         return _GLOBAL_MODELS
     with _GLOBAL_MODELS_LOCK:
         if _GLOBAL_MODELS is not None:
-            logger.debug("[ML] get_global_models → cache hit after lock (%d families)", len(_GLOBAL_MODELS))
+            logger.debug("[ML] preload_global_models → cache hit after lock (%d families)", len(_GLOBAL_MODELS))
             return _GLOBAL_MODELS
-        logger.info("[ML] get_global_models -> first call; loading from disk...")
+        logger.info("[ML] preload_global_models -> loading from disk...")
         t0 = time.monotonic()
         _GLOBAL_MODELS = _load_models_from_disk(settings)
-        logger.info("[ML] get_global_models → disk load done in %.3fs", time.monotonic() - t0)
+        logger.info("[ML] preload_global_models → disk load done in %.3fs", time.monotonic() - t0)
     return _GLOBAL_MODELS
+
+
+def get_cached_global_models() -> dict[str, list]:
+    """Return the preloaded cache without triggering disk I/O."""
+    if _GLOBAL_MODELS is None:
+        raise RuntimeError("Global model cache is empty; preload_global_models() must run at startup")
+    return _GLOBAL_MODELS
+
+
+def get_global_models(settings: Settings) -> dict[str, list]:
+    """Backward-compatible alias that preloads on demand."""
+    return preload_global_models(settings)
 
 
 def reset_global_models() -> None:
     """Invalidate the cache so the next call re-loads from disk."""
-    global _GLOBAL_MODELS
+    global _GLOBAL_MODELS, _GLOBAL_CALIBRATION_PROFILE
     logger.info("[ML] reset_global_models: cache cleared")
     _GLOBAL_MODELS = None
+    _GLOBAL_CALIBRATION_PROFILE = None
 
 
 # ── Disk helpers ───────────────────────────────────────────────────────────────
@@ -159,10 +172,8 @@ def _load_models_from_disk(settings: Settings) -> dict[str, list]:
     logger.info("[ML] Ensemble families enabled: %s", sorted(ENSEMBLE_FAMILIES))
 
     if not families:
-        logger.warning(
-            "[ML] No model families found under %s", root
-        )
-        return loaded
+        logger.error("[ML] No model families found under %s", root)
+        raise RuntimeError(f"No model families found under {root}")
 
     t_family = time.monotonic()
     for family_name, family_dir in families:
@@ -194,6 +205,7 @@ def _load_models_from_disk(settings: Settings) -> dict[str, list]:
                 )
             except Exception:
                 logger.exception("[ML] Failed to load %s/%s", family_name, label)
+                raise
 
         logger.info(
             "[ML] Family '%s' loaded in %.2fs (%d labels found)",
@@ -203,13 +215,21 @@ def _load_models_from_disk(settings: Settings) -> dict[str, list]:
 
     summary = {k: len(v) for k, v in loaded.items()}
     total   = sum(summary.values())
+    if total <= 0:
+        raise RuntimeError(f"No models could be loaded from {root}")
     _set_global_calibration_profile(
         ProbabilityCalibrationService.build_entropy_profile(
             [family_dir for _, family_dir in families],
             settings.calibration_entropy_fallback,
         )
     )
-    _warmup_models(loaded)
+    warmup_models = os.environ.get("WARMUP_MODELS_ON_STARTUP", "0").lower() in {
+        "1", "true", "yes", "on"
+    }
+    if warmup_models:
+        _warmup_models(loaded)
+    else:
+        logger.info("[ML] Warmup skipped (WARMUP_MODELS_ON_STARTUP=0)")
     logger.info(
         "[ML] All models loaded in %.2fs – per-label count: %s  [TOTAL=%d models]",
         time.monotonic() - t_family, summary, total,
@@ -366,8 +386,8 @@ class MLPredictionService:
         self.calibration   = ProbabilityCalibrationService(settings, _get_global_calibration_profile(settings))
 
     def load_models(self) -> dict[str, list]:
-        """Backward-compatible alias – delegates to the module-level cache."""
-        return get_global_models(self.settings)
+        """Backward-compatible alias – returns the already preloaded cache."""
+        return get_cached_global_models()
 
     # ─── Public entry point ───────────────────────────────────────────────────
 
@@ -429,11 +449,10 @@ class MLPredictionService:
         # ── 4. Load models from global cache ─────────────────────────────────
         t0 = time.monotonic()
         models: dict[str, list] = {}
-        logger.info("[ML] MODEL LOAD START from global cache")
         try:
-            models = get_global_models(self.settings)
+            models = get_cached_global_models()
             model_info = {k: len(v) for k, v in models.items() if k != "_elapsed_s"}
-            logger.info("[ML] MODEL LOAD END labels=%s %.3fs", model_info, time.monotonic() - t0)
+            logger.info("[ML] MODEL CACHE READY labels=%s %.3fs", model_info, time.monotonic() - t0)
             if not any(models.values()):
                 return self._build_refusal_payload(
                     analysis_id=analysis_id,

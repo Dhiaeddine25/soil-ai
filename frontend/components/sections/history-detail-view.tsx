@@ -20,6 +20,7 @@ import { downloadHistoryCsv, downloadHistoryPdf, getHistory, getHistoryEntry } f
 import { API_BASE } from '@/lib/api';
 import type { HistoryEntry } from '@/lib/types';
 import { comparePredictions, getFocusLabel, getNutrientLevelLabel, getSoilScore } from '@/lib/soil-insights';
+import { useI18n } from '@/components/i18n/i18n-provider';
 
 const imagePalettes = [
   'from-leaf-300 via-emerald-200 to-soil-100',
@@ -95,7 +96,8 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
   const npkPrediction = prediction?.prediction ?? prediction?.npk_prediction ?? null;
   const exportParcelId = entry?.parcel_id ?? undefined;
 
-  const sourceLabel = useMemo(() => entry?.image_name ?? prediction?.source ?? 'Image non renseignee', [entry, prediction]);
+  const { messages } = useI18n();
+  const sourceLabel = useMemo(() => entry?.image_name ?? prediction?.source ?? (messages.history?.imageNotProvided ?? 'Image non renseignee'), [entry, prediction, messages]);
 
   const confidence = Math.round((prediction?.confidence ?? 0) * 100);
   const agronomicAdvice = prediction?.agronomic_advice;
@@ -123,21 +125,17 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
     return Math.round(probability * 100) || confidence;
   };
 
-  const refusalTips = [
-    'Reprendre une photo nette, sans ombre forte.',
-    'Cadrer le sol de pres, sans vegetation.',
-    'Eviter le flou en tenant le telephone stable.',
-  ];
+  const refusalTips = messages.history?.refusalTips ?? ['Reprendre une photo nette, sans ombre forte.', 'Cadrer le sol de pres, sans vegetation.', 'Eviter le flou en tenant le telephone stable.'];
 
   const timelineItems = useMemo(() => {
     const statusForScore = (score: number) => {
       if (score >= 75) {
-        return { status: 'stable' as const, label: 'Sol stable' };
+        return { status: 'stable' as const, label: messages.history?.statusStable ?? 'Sol stable' };
       }
       if (score >= 55) {
-        return { status: 'watch' as const, label: 'A surveiller' };
+        return { status: 'watch' as const, label: messages.history?.statusWatch ?? 'A surveiller' };
       }
-      return { status: 'priority' as const, label: 'Prioritaire' };
+      return { status: 'priority' as const, label: messages.history?.statusPriority ?? 'Prioritaire' };
     };
 
     return [...relatedEntries]
@@ -155,10 +153,10 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
           status: statusInfo.status,
           statusLabel: statusInfo.label,
           nutrientLabel: getFocusLabel(focus),
-          imageLabel: item.image_name ?? 'Image non renseignee',
+          imageLabel: item.image_name ?? messages.history?.imageNotProvided ?? 'Image non renseignee',
         };
       });
-  }, [relatedEntries]);
+  }, [relatedEntries, messages]);
 
   const trendConfig = {
     'amélioration': {
@@ -172,14 +170,14 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
       tone: 'border-rose-200 bg-rose-50 text-rose-800',
     },
     'stable': {
-      label: 'Stable',
+      label: messages.history?.statusStable ?? 'Stable',
       icon: Minus,
       tone: 'border-soil-200 bg-soil-50 text-soil-700',
     },
   } as const;
 
-  const adviceBody = prediction?.field_advice ?? prediction?.recommendation_message ?? prediction?.recommendation ?? 'Conseil indicatif.';
-  const adviceDisclaimer = prediction?.field_disclaimer ?? agronomicAdvice?.global_advice.warning ?? 'Analyse indicative basee sur une image.';
+  const adviceBody = prediction?.field_advice ?? prediction?.recommendation_message ?? prediction?.recommendation ?? messages.history?.adviceFallback ?? 'Conseil indicatif.';
+  const adviceDisclaimer = prediction?.field_disclaimer ?? agronomicAdvice?.global_advice.warning ?? messages.history?.adviceDisclaimerFallback ?? 'Analyse indicative basee sur une image.';
 
   const exportContext = async (format: 'csv' | 'pdf') => {
     if (!user || !token) {
@@ -193,7 +191,7 @@ export function HistoryDetailView({ analysisId }: { analysisId: string }) {
         await downloadHistoryPdf(user.id, token, exportParcelId);
       }
     } catch {
-      setError("Impossible d'exporter cet historique pour le moment.");
+      setError(messages.history?.exportError ?? "Impossible d'exporter cet historique pour le moment.");
     } finally {
       setIsExporting(false);
     }
